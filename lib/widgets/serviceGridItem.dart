@@ -1,23 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:smart_nagarpalika/Screens/redirectingScreen.dart';
+// import 'package:smart_nagarpalika/Screens/webview_screen.dart';
 
 class ServiceGridItem extends StatelessWidget {
   final String imagePath;
   final String label;
-  final VoidCallback? onTap;
+  final String? url;
+  final Widget? screen;
 
   const ServiceGridItem({
     super.key,
     required this.imagePath,
     required this.label,
-    this.onTap,
+    this.url,
+    this.screen,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: onTap ?? (){
-        print("Tapped");
+      onTap: () {
+        if (screen != null) {
+          // Navigate to Flutter screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => screen!),
+          );
+        } else if (url != null && url!.isNotEmpty) {
+          // Navigate to WebView
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WebViewScreen(
+                url: url!,
+                // title: label,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("No action assigned")));
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
@@ -36,11 +61,7 @@ class ServiceGridItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.contain,
-                width: 40,
-              ),
+              child: Image.asset(imagePath, fit: BoxFit.contain, width: 40),
             ),
             const SizedBox(height: 8),
             Text(

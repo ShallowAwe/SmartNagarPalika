@@ -8,10 +8,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
 import 'package:smart_nagarpalika/Screens/ComplaintsScreen.dart';
 import 'package:smart_nagarpalika/Services/camera_service.dart';
+import 'package:smart_nagarpalika/Services/complaintService.dart';
 // import 'package:smart_nagarpalika/Services/complaintService.dart';
 import 'package:smart_nagarpalika/utils/formValidator.dart';
 import 'package:smart_nagarpalika/widgets/mapWidget.dart';
-
 
 class ComplaintRegistrationScreen extends StatefulWidget {
   const ComplaintRegistrationScreen({super.key});
@@ -21,18 +21,19 @@ class ComplaintRegistrationScreen extends StatefulWidget {
       _ComplaintRegistrationScreenState();
 }
 
-class _ComplaintRegistrationScreenState extends State<ComplaintRegistrationScreen> {
+class _ComplaintRegistrationScreenState
+    extends State<ComplaintRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
- //final  _complaintService = ComplaintService;// we use the singleton instance directly/../././
+  //final  _complaintService = ComplaintService;// we use the singleton instance directly/../././
   // List od images./././
-   List<XFile>? _mediaFiles = []; 
-// List of complaints
+  List<XFile>? _mediaFiles = [];
+  // List of complaints
   List<ComplaintModel> complaints = [];
   // Form controllers
   final _descriptionController = TextEditingController();
   final _addressController = TextEditingController();
   final _landmarkController = TextEditingController();
-  
+
   // Form state
   String? _selectedCategory;
   Position? _currentLocation;
@@ -54,121 +55,137 @@ class _ComplaintRegistrationScreenState extends State<ComplaintRegistrationScree
   }
 
   Future<void> _handleFileUpload() async {
-  if (_mediaFiles!.length >= 5) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Maximum 5 files allowed')),
-    );
-    return;
+    if (_mediaFiles!.length >= 5) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Maximum 5 files allowed')));
+      return;
+    }
+
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Camera permission is required')),
+      );
+      return;
+    }
+
+    final XFile? pickedFile = await CameraService().pickFromCamera();
+
+    if (pickedFile != null) {
+      setState(() {
+        _mediaFiles!.add(pickedFile);
+        _attachments.add(pickedFile.path);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File attached successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No file selected')));
+    }
   }
 
-  final status = await Permission.camera.request();
-  if (!status.isGranted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Camera permission is required')),
-    );
-    return;
-  }
+  // List<ComplaintModel> _submmitComplaint() {
+  //   final complaint = ComplaintModel(
+  //     id: DateTime.now().millisecondsSinceEpoch.toString(),
+  //     description: _descriptionController.text.trim(),
+  //     category: _selectedCategory!,
+  //     address: _addressController.text.trim(),
+  //     landmark: _landmarkController.text.trim().isEmpty
+  //         ? null
+  //         : _landmarkController.text.trim(),
+  //     location: LocationData.fromPosition(_currentLocation!),
+  //     attachments: _attachments,
+  //     createdAt: DateTime.now(),
 
-  final XFile? pickedFile = await CameraService().pickFromCamera();
+  //   );
+  //   complaints.add(complaint);
+  //   return complaints;
+  // }
 
-  if (pickedFile != null) {
+  // when we ready to apply back end    remeber to check this first Ok
+  Future<void> _submitComplaint() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_currentLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please wait for location to be detected or allow location access',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Add validation for attachments
+    if (_attachments.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add at least one image'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
-      _mediaFiles!.add(pickedFile);
-      _attachments.add(pickedFile.path);
+      _isSubmitting = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('File attached successfully!')),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No file selected')),
-    );
+    try {
+      // Test connectivity first
+      // await ComplaintService.instance.testConnectivity();
+
+      final complaint = ComplaintModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        description: _descriptionController.text.trim(),
+        category: _selectedCategory!,
+        address: _addressController.text.trim(),
+        landmark: _landmarkController.text.trim().isEmpty
+            ? null
+            : _landmarkController.text.trim(),
+        location: LocationData.fromPosition(_currentLocation!),
+        attachments: _attachments,
+        createdAt: DateTime.now(),
+      );
+
+      await ComplaintService.instance.submitComplaint(complaint, "rudra");
+
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Complaint submitted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _clearForm();
+      }
+    } catch (e) {
+      print('❌ Form submission error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit complaint: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
-}
-
-List<ComplaintModel> _submmitComplaint() {
-  final complaint = ComplaintModel(
-    id: DateTime.now().millisecondsSinceEpoch.toString(),
-    description: _descriptionController.text.trim(),
-    category: _selectedCategory!,
-    address: _addressController.text.trim(),
-    landmark: _landmarkController.text.trim().isEmpty 
-        ? null 
-        : _landmarkController.text.trim(),
-    location: LocationData.fromPosition(_currentLocation!),
-    attachments: _attachments,
-    createdAt: DateTime.now(),
-  
-  );
-  complaints.add(complaint);
-  return complaints;
-}
-
-// when we ready to apply back end    remeber to check this first Ok
-  // Future<void> _submitComplaint() async {
-  //   if (!_formKey.currentState!.validate()) {
-  //     return;
-  //   }
-
-  //   if (_currentLocation == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(
-  //         content: Text('Please wait for location to be detected or allow location access'),
-  //         backgroundColor: Colors.orange,
-  //       ),
-  //     );
-  //     return;
-  //   }
-
-  //   setState(() {
-  //     _isSubmitting = true;
-  //   });
-
-  //   try {
-  //     final complaint = ComplaintModel(
-  //       id: DateTime.now().millisecondsSinceEpoch.toString(),
-  //       description: _descriptionController.text.trim(),
-  //       category: _selectedCategory!,
-  //       address: _addressController.text.trim(),
-  //       landmark: _landmarkController.text.trim().isEmpty 
-  //           ? null 
-  //           : _landmarkController.text.trim(),
-  //       location: LocationData.fromPosition(_currentLocation!),
-  //       attachments: _attachments,
-  //       createdAt: DateTime.now(),
-  //     );
-
-  //     await ComplaintService.instance.submitComplaint(complaint);
-
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(
-  //           content: Text('Complaint submitted successfully!'),
-  //           backgroundColor: Colors.green,
-  //         ),
-  //       );
-
-  //       // Clear form
-  //       _clearForm();
-  //     }
-  //   } catch (e) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text('Failed to submit complaint: ${e.toString()}'),
-  //           backgroundColor: Colors.red,
-  //         ),
-  //       );
-  //     }
-  //   } finally {
-  //     if (mounted) {
-  //       setState(() {
-  //         _isSubmitting = false;
-  //       });
-  //     }
-  //   }
-  // }
 
   void _clearForm() {
     _descriptionController.clear();
@@ -185,7 +202,6 @@ List<ComplaintModel> _submmitComplaint() {
     return Scaffold(
       backgroundColor: const Color(0xFFDFF6FA),
       appBar: AppBar(
-        
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_ios_new),
@@ -213,7 +229,14 @@ List<ComplaintModel> _submmitComplaint() {
               const SizedBox(height: 16),
               _buildLocationSection(),
               const SizedBox(height: 24),
-              _buildSubmitButton(complaints),
+              _buildSubmitButton(
+                complaints,
+                onComplaintSubmitted: (ComplaintModel submittedComplaint) {
+                  setState(() {
+                    complaints.add(submittedComplaint);
+                  });
+                },
+              ),
             ],
           ),
         ),
@@ -231,7 +254,9 @@ List<ComplaintModel> _submmitComplaint() {
           controller: _descriptionController,
           maxLength: 250,
           maxLines: 5,
-          decoration: _buildInputDecoration('Enter your complaint here (तुमची तक्रार प्रविष्ट करा)'),
+          decoration: _buildInputDecoration(
+            'Enter your complaint here (तुमची तक्रार प्रविष्ट करा)',
+          ),
           validator: FormValidator.validateDescription,
         ),
       ],
@@ -248,10 +273,12 @@ List<ComplaintModel> _submmitComplaint() {
           decoration: _buildInputDecoration('Select category'),
           value: _selectedCategory,
           items: ComplaintCategory.allCategories
-              .map((category) => DropdownMenuItem(
-                    value: category,
-                    child: Text(category, style: const TextStyle(fontSize: 14)),
-                  ))
+              .map(
+                (category) => DropdownMenuItem(
+                  value: category,
+                  child: Text(category, style: const TextStyle(fontSize: 14)),
+                ),
+              )
               .toList(),
           onChanged: (value) {
             setState(() {
@@ -265,78 +292,82 @@ List<ComplaintModel> _submmitComplaint() {
   }
 
   Widget _buildFileUploadSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1DD1A1), Color(0xFF54A0FF)],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1DD1A1), Color(0xFF54A0FF)],
+            ),
+            borderRadius: BorderRadius.circular(10),
           ),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: ElevatedButton.icon(
-          onPressed: _handleFileUpload,
-          icon: const Icon(Icons.attach_file),
-          label: const Text('Add File (फाइल जोडा)'),
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
+          child: ElevatedButton.icon(
+            onPressed: _handleFileUpload,
+            icon: const Icon(Icons.attach_file),
+            label: const Text('Add File (फाइल जोडा)'),
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
         ),
-      ),
-      const SizedBox(height: 10),
-      if (_mediaFiles!.isNotEmpty)
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: _mediaFiles!
-              .asMap()
-              .entries
-              .map(
-                (entry) => Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        File(entry.value.path),
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _attachments.remove(entry.value.path);
-                          _mediaFiles?.removeAt(entry.key);
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
+        const SizedBox(height: 10),
+        if (_mediaFiles!.isNotEmpty)
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _mediaFiles!
+                .asMap()
+                .entries
+                .map(
+                  (entry) => Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(entry.value.path),
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
                         ),
-                        child: const Icon(Icons.close, color: Colors.white, size: 18),
                       ),
-                    )
-                  ],
-                ),
-              )
-              .toList(),
-        ),
-    ],
-  );
-}
-
-
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _attachments.remove(entry.value.path);
+                            _mediaFiles?.removeAt(entry.key);
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                .toList(),
+          ),
+      ],
+    );
+  }
 
   Widget _buildAddressField() {
     return Column(
@@ -346,7 +377,9 @@ List<ComplaintModel> _submmitComplaint() {
         const SizedBox(height: 8),
         TextFormField(
           controller: _addressController,
-          decoration: _buildInputDecoration('Enter your address (तुमचा पत्ता प्रविष्ट करा)'),
+          decoration: _buildInputDecoration(
+            'Enter your address (तुमचा पत्ता प्रविष्ट करा)',
+          ),
           validator: FormValidator.validateAddress,
         ),
       ],
@@ -361,7 +394,9 @@ List<ComplaintModel> _submmitComplaint() {
         const SizedBox(height: 8),
         TextFormField(
           controller: _landmarkController,
-          decoration: _buildInputDecoration('Enter landmark (लँडमार्क एंटर करा)'),
+          decoration: _buildInputDecoration(
+            'Enter landmark (लँडमार्क एंटर करा)',
+          ),
           validator: FormValidator.validateLandmark,
         ),
       ],
@@ -372,7 +407,6 @@ List<ComplaintModel> _submmitComplaint() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-       
         _buildLabel('Your Current Location (तुमच वर्तमान स्थान)'),
         const SizedBox(height: 8),
         MapWidget(
@@ -393,7 +427,11 @@ List<ComplaintModel> _submmitComplaint() {
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green.shade600,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -412,30 +450,56 @@ List<ComplaintModel> _submmitComplaint() {
     );
   }
 
-  Widget _buildSubmitButton( List<ComplaintModel> complaints) {
+  Widget _buildSubmitButton(
+    List<ComplaintModel> complaints, {
+    required Function(ComplaintModel) onComplaintSubmitted,
+  }) {
     return SizedBox(
       width: MediaQuery.of(context).size.width,
       child: ElevatedButton(
-        onPressed: _isSubmitting ? null : () async {
-          _submmitComplaint();
-  final result = await Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (context) =>  Complaintsscreen(complaints: complaints,),
-    ),
-  );
+        onPressed: _isSubmitting
+            ? null
+            : () async {
+                try {
+                  // Submit the complaint
+                  await _submitComplaint();
 
-  if (result == true) {
-    setState(() {
-      // Reload complaints list from service (if using a real DB or API, fetch again) 
-      print("THE COMPLAINTS $complaints");
-    });
-  }
-},
+                  // Create the complaint object that was submitted
+                  final newComplaint = ComplaintModel(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    description: _descriptionController.text.trim(),
+                    category: _selectedCategory!,
+                    address: _addressController.text.trim(),
+                    landmark: _landmarkController.text.trim().isEmpty
+                        ? null
+                        : _landmarkController.text.trim(),
+                    location: LocationData.fromPosition(_currentLocation!),
+                    attachments: _attachments,
+                    createdAt: DateTime.now(),
+                  );
+
+                  // Notify parent to update the complaints list
+                  onComplaintSubmitted(newComplaint);
+
+                  // Navigate to complaints screen
+                  // Replace the navigation part with:
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => Complaintsscreen(
+                        complaints: [...complaints, newComplaint],
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  // Error handling is already done in _submitComplaint
+                  print('Submit button error: $e');
+                }
+              },
         style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          backgroundColor: const Color.fromARGB(255, 86, 240, 119),
-          foregroundColor: const Color.fromARGB(179, 54, 54, 54),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: _isSubmitting
             ? const SizedBox(
@@ -447,8 +511,8 @@ List<ComplaintModel> _submmitComplaint() {
                 ),
               )
             : const Text(
-                'Submit Complaint (तक्रार सबमिट करा)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,),
+                'Submit Complaint',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
       ),
     );
@@ -470,15 +534,11 @@ List<ComplaintModel> _submmitComplaint() {
   }
 
   Widget _buildLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(fontWeight: FontWeight.w500),
-    );
+    return Text(label, style: const TextStyle(fontWeight: FontWeight.w500));
   }
 
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
-      
       filled: true,
       fillColor: Colors.white,
       hintText: hint,

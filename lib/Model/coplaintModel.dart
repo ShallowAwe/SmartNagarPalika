@@ -1,4 +1,3 @@
-
 import 'package:geolocator/geolocator.dart';
 
 class ComplaintModel {
@@ -45,37 +44,15 @@ class ComplaintModel {
       category: json['category'],
       address: json['address'],
       landmark: json['landmark'],
-      location: json['location'] != null ? LocationData.fromJson(json['location']) : null,
+      location: json['location'] != null
+          ? LocationData.fromJson(json['location'])
+          : null,
       attachments: List<String>.from(json['attachments'] ?? []),
       createdAt: DateTime.parse(json['createdAt']),
       status: ComplaintStatus.values.firstWhere(
         (e) => e.toString() == json['status'],
         orElse: () => ComplaintStatus.pending,
       ),
-    );
-  }
-
-  ComplaintModel copyWith({
-    String? id,
-    String? description,
-    String? category,
-    String? address,
-    String? landmark,
-    LocationData? location,
-    List<String>? attachments,
-    DateTime? createdAt,
-    ComplaintStatus? status,
-  }) {
-    return ComplaintModel(
-      id: id ?? this.id,
-      description: description ?? this.description,
-      category: category ?? this.category,
-      address: address ?? this.address,
-      landmark: landmark ?? this.landmark,
-      location: location ?? this.location,
-      attachments: attachments ?? this.attachments,
-      createdAt: createdAt ?? this.createdAt,
-      status: status ?? this.status,
     );
   }
 }
@@ -127,6 +104,7 @@ enum ComplaintStatus {
   resolved,
   rejected,
 }
+
 
 class ComplaintCategory {
   static const String streetLight = 'Street light issue (रस्त्यावरील दिवे)';

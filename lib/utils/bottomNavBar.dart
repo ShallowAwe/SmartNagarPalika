@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:smart_nagarpalika/Screens/nearMeScreen.dart';
 
 class BottomNavbar extends StatelessWidget {
-  const BottomNavbar({super.key});
+  final bool isNearmeSelected;
+  const BottomNavbar({super.key, required this.isNearmeSelected});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      height: 70,
+      padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -23,21 +26,28 @@ class BottomNavbar extends StatelessWidget {
           children: [
             _NavItem(
               title: 'Home',
-              imagePath: 'lib/assets/homeUnSelected.png',
+              imagePath: 'assets/homeUnSelected.png',
               onTap: () {
                 // Navigate to Home
               },
             ),
             _NavItem(
-              title: 'Near Mw',
-              imagePath: 'lib/assets/nearMe.png',
+              title: 'Near Me',
+              imagePath: 'assets/nearMe.png',
               onTap: () {
-                // Navigate to Near Me
+                isNearmeSelected
+                    ? null
+                    : Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const NearMeScreen(),
+                        ),
+                      );
               },
             ),
             _NavItem(
               title: 'Services',
-              imagePath: 'lib/assets/Seervices (1).png', // Make sure you rename this file
+              imagePath:
+                  'assets/Seervices (1).png', // Make sure you rename this file
               onTap: () {
                 // Navigate to Services
               },
@@ -45,7 +55,7 @@ class BottomNavbar extends StatelessWidget {
             _NavItem(
               title: 'Profile',
 
-              imagePath: 'lib/assets/profile.png',
+              imagePath: 'assets/profile.png',
               onTap: () {
                 // Navigate to Profile
               },
@@ -79,18 +89,16 @@ class _NavItem extends StatelessWidget {
         child: Column(
           children: [
             Image.asset(imagePath, width: 30, height: 30),
-           Text(
-  title,
-  style: const TextStyle(
-    fontSize: 10,
-    color: Colors.black87,
-    fontWeight: FontWeight.w500,
-  ),
-),
-
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
-        )
-       
+        ),
       ),
     );
   }

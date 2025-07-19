@@ -13,34 +13,47 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  @override
+  bool _isNearmeSelected = false;
+  @override 
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   title: Text("Smart Nagarpalika"),
-      //   // backgroundColor: Colors.green,
-      // ),
       body: SingleChildScrollView(
         child: Column(
-          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-        
-          children:  [
-            TopContainer(),
-          const SizedBox(height:15,),
-            Horizantalnewscard(),
-            const SizedBox(height: 15,),
-            Column(
-              children: [
-            ServiceGridSection(title: 'Quick Services', services: quickServices),
-            ServiceGridSection(title: 'Popular Services', services: popularServices),
-              ],
-            )
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Container
+            const TopContainer(),
+            
+            const SizedBox(height: 16), // Consistent spacing
+            
+            // News Card Section
+            const Horizantalnewscard(),
+            
+            const SizedBox(height: 20), // Slightly more space before services
+            
+            // Services Sections
+            ServiceGridSection(
+              title: 'Quick Services', 
+              services: quickServices,
+            ),
+            
+            const SizedBox(height: 24), // Space between sections
+            
+             ServiceGridSection(
+              title: 'Popular Services', 
+              services: popularServices,
+            ),
+            
+            const SizedBox(height: 20), // Bottom padding
           ],
         ),
       ),
-      bottomNavigationBar: SizedBox( height:96,child:  BottomNavbar()),
-         
+      bottomNavigationBar:  SizedBox(
+        height: 96,
+        child: BottomNavbar(
+          isNearmeSelected: _isNearmeSelected,
+        ),
+      ),
     );
   }
 }

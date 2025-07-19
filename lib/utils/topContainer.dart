@@ -53,12 +53,12 @@ class TopContainer extends StatelessWidget {
           // ),
 
           /// Right Side: Notification Icon
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // TODO: Notification screen
-            },
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.notifications_outlined),
+          //   onPressed: () {
+          //     // TODO: Notification screen
+          //   },
+          // ),
         ],
       ),
     );

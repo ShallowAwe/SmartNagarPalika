@@ -67,31 +67,32 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - lib/assets/bank.png
-    - lib/assets/fireStation.png
-    - lib/assets/fuelStation.png
-    - lib/assets/hospital.png
-    - lib/assets/park.png
-    - lib/assets/policeStation.png
-    - lib/assets/School.png
-    - lib/assets/restroom.png
-    - lib/assets/default.png
-    - lib/assets/billBoard.png
-    - lib/assets/Certificates.png
-    - lib/assets/complaint.png
-    - lib/assets/helpDesk.png
-    - lib/assets/licence.png
-    - lib/assets/lightBill.png
-    - lib/assets/news.png
-    - lib/assets/pet.png
-    - lib/assets/PropertyTax.png
-    - lib/assets/treeTreaming.png
-    - lib/assets/WaterTax.png
-    - lib/assets/homeSelected.png
-    - lib/assets/nearMe.png
-    - lib/assets/Seervices (1).png
-    - lib/assets/homeUnSelected.png
-    - lib/assets/profile.png
+    - assets/bank.png
+    - assets/billBoard.png
+    - assets/Certificates.png
+    - assets/complaint.png
+    - assets/default.png
+    - assets/fireStation.png
+    - assets/fuelStation.png
+    - assets/helpDesk.png
+    - assets/homeSelected.png
+    - assets/homeUnSelected.png
+    - assets/hospital.png
+    - assets/icons8-billboard-16.png
+    - assets/licence.png
+    - assets/lightBill.png
+    - assets/nearMe.png
+    - assets/news.png
+    - assets/park.png
+    - assets/pet.png
+    - assets/policeStation.png
+    - assets/profile.png
+    - assets/PropertyTax.png
+    - assets/restroom.png
+    - assets/School.png
+    - assets/Seervices (1).png
+    - assets/treeTreaming.png
+    - assets/WaterTax.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

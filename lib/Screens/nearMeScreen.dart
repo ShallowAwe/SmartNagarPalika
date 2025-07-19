@@ -43,9 +43,11 @@ class _NearMeScreenState extends State<NearMeScreen> {
 
   Future<void> _checkPermissionAndInit() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
       permission = await Geolocator.requestPermission();
-      if (permission != LocationPermission.whileInUse && permission != LocationPermission.always) {
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
         debugPrint("Location permission denied.");
         return;
       }
@@ -55,18 +57,20 @@ class _NearMeScreenState extends State<NearMeScreen> {
 
   // to redireect the user to the maps
 
+  void _openInMaps(double lat, double lng, String label) async {
+    final encodedLabel = Uri.encodeComponent(label);
+    final googleMapsUrl =
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng&query_place_id=$encodedLabel';
 
-void _openInMaps(double lat, double lng, String label) async {
-  final encodedLabel = Uri.encodeComponent(label);
-  final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng&query_place_id=$encodedLabel';
-
-  if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
-    await launchUrl(Uri.parse(googleMapsUrl), mode: LaunchMode.externalApplication);
-  } else {
-    debugPrint("Could not launch Google Maps.");
+    if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
+      await launchUrl(
+        Uri.parse(googleMapsUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      debugPrint("Could not launch Google Maps.");
+    }
   }
-}
-
 
   Future<void> _initLocation() async {
     try {
@@ -78,55 +82,61 @@ void _openInMaps(double lat, double lng, String label) async {
         _currentLatLng = latLng;
       });
 
-      
       // _fetchNearbyPlaces(latLng.latitude, latLng.longitude, _selectedFilters.isEmpty ? _allFilters : _selectedFilters);
     } catch (e) {
       debugPrint("Error getting location: $e");
     }
   }
-  Future<void> _fetchNearbyPlaces(double lat, double lng, List<String> types) async {
-  _isFetching = true;
-  _places.clear();
-  _markers.clear();
-  setState(() {});
 
-  // Use dummyPlaces from imported dummy_places.dart
-  final filtered = dummyPlaces.where((place) {
+  Future<void> _fetchNearbyPlaces(
+    double lat,
+    double lng,
+    List<String> types,
+  ) async {
+    _isFetching = true;
+    _places.clear();
+    _markers.clear();
+    setState(() {});
 
-    return types.isEmpty || (place.types?.any((t) => types.contains(t)) ?? false);
-  }).toList();
+    // Use dummyPlaces from imported dummy_places.dart
+    final filtered = dummyPlaces.where((place) {
+      return types.isEmpty ||
+          (place.types?.any((t) => types.contains(t)) ?? false);
+    }).toList();
 
-  for (var place in filtered) {
-    _places.add(place);
-    _markers.add(
-      Marker(
-        markerId: MarkerId(place.placeId),
-        position: LatLng(place.lat, place.lng),
-        infoWindow: InfoWindow(title: place.name, snippet: place.address,onTap: () async{
-     OkCancelResult result = await showOkCancelAlertDialog(
-  context: context,
-  title: "Open in Maps",
-  message: "Do you want to open in maps?",
-  okLabel: "Yes",
-  cancelLabel: "No",
-);
+    for (var place in filtered) {
+      _places.add(place);
+      _markers.add(
+        Marker(
+          markerId: MarkerId(place.placeId),
+          position: LatLng(place.lat, place.lng),
+          infoWindow: InfoWindow(
+            title: place.name,
+            snippet: place.address,
+            onTap: () async {
+              OkCancelResult result = await showOkCancelAlertDialog(
+                context: context,
+                title: "Open in Maps",
+                message: "Do you want to open in maps?",
+                okLabel: "Yes",
+                cancelLabel: "No",
+              );
 
-if (result == OkCancelResult.ok) {
-  _openInMaps(place.lat, place.lng, place.name);
-}
+              if (result == OkCancelResult.ok) {
+                _openInMaps(place.lat, place.lng, place.name);
+              }
+            },
+          ),
+          icon: await _getCustomMarkerIcon(place.types?.first ?? 'default'),
+        ),
+      );
+    }
 
-        },),
-        icon: await _getCustomMarkerIcon(place.types?.first ?? 'default'),
-      ),
-    );
+    _isFetching = false;
+    setState(() {
+      print("Current location $LatLng");
+    });
   }
-
-  _isFetching = false;
-  setState(() {
-    print("Current location $LatLng");
-  });
-}
-
 
   // Future<void> _fetchNearbyPlaces(double lat, double lng, List<String> types) async {
   //   if (_isFetching) return;
@@ -137,7 +147,6 @@ if (result == OkCancelResult.ok) {
   //   _markers.clear();
   //   final Set<String> addedPlaceIds = {};
   //   setState(() {}); // To show loader/clear map
-
 
   //   final Map<String, String> placeTypeMap = {
   //     'Hospital': 'hospital',
@@ -152,8 +161,7 @@ if (result == OkCancelResult.ok) {
 
   //   for (final type in types) {
   //     final normalized = placeTypeMap[type.trim().toLowerCase()] ?? type.trim().toLowerCase();
-      
-      
+
   //     final url = Uri.parse(
   //       'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
   //       '?location=$lat,$lng'
@@ -168,17 +176,17 @@ if (result == OkCancelResult.ok) {
   //     try {
   //       final res = await http.get(url);
   //       debugPrint("Response status for $type: ${res.statusCode}");
-        
+
   //       if (res.statusCode == 200) {
   //         final data = jsonDecode(res.body);
   //         final status = data['status'];
-          
+
   //         debugPrint("API Status for $type: $status");
-          
+
   //         if (status == 'OK') {
   //           final results = data['results'] as List;
   //           debugPrint("Found ${results.length} places for $type");
-            
+
   //           for (var item in results) {
   //             try {
   //               final place = PlaceModel.fromJson(item);
@@ -232,13 +240,19 @@ if (result == OkCancelResult.ok) {
       case 'park':
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
       case 'gas_station':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow);
+        return BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueYellow,
+        );
       case 'fire_station':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
+        return BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueOrange,
+        );
       case 'bank':
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan);
       case 'public_toilet':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueMagenta);
+        return BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueMagenta,
+        );
       default:
         return BitmapDescriptor.defaultMarker;
     }
@@ -278,7 +292,10 @@ if (result == OkCancelResult.ok) {
                     const SizedBox(height: 16),
                     const Text(
                       "Select Place Type",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     GridView.count(
@@ -301,9 +318,13 @@ if (result == OkCancelResult.ok) {
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              color: isSelected ? Colors.blue[100] : Colors.grey[200],
+                              color: isSelected
+                                  ? Colors.blue[100]
+                                  : Colors.grey[200],
                               border: Border.all(
-                                color: isSelected ? Colors.blue : Colors.grey[300]!,
+                                color: isSelected
+                                    ? Colors.blue
+                                    : Colors.grey[300]!,
                                 width: isSelected ? 2 : 1,
                               ),
                             ),
@@ -318,8 +339,12 @@ if (result == OkCancelResult.ok) {
                                     _getLabelForType(type),
                                     style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: isSelected ? Colors.blue[700] : Colors.black87,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? Colors.blue[700]
+                                          : Colors.black87,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -354,11 +379,15 @@ if (result == OkCancelResult.ok) {
                               });
 
                               if (_currentLatLng != null) {
-                                debugPrint("Applying filters: $_selectedFilters");
+                                debugPrint(
+                                  "Applying filters: $_selectedFilters",
+                                );
                                 _fetchNearbyPlaces(
                                   _currentLatLng!.latitude,
                                   _currentLatLng!.longitude,
-                                  _selectedFilters.isEmpty ? _allFilters : _selectedFilters,
+                                  _selectedFilters.isEmpty
+                                      ? _allFilters
+                                      : _selectedFilters,
                                 );
                               }
                             },
@@ -405,7 +434,7 @@ if (result == OkCancelResult.ok) {
     };
 
     final path = iconMap[type];
-    
+
     if (path != null) {
       return Image.asset(
         path,
@@ -417,14 +446,14 @@ if (result == OkCancelResult.ok) {
         },
       );
     }
-    
+
     return _getDefaultIcon(type);
   }
 
   Widget _getDefaultIcon(String type) {
     IconData iconData;
     Color color;
-    
+
     switch (type) {
       case 'hospital':
         iconData = Icons.local_hospital;
@@ -462,15 +491,18 @@ if (result == OkCancelResult.ok) {
         iconData = Icons.location_on;
         color = Colors.grey;
     }
-    
+
     return Icon(iconData, size: 24, color: color);
   }
 
   String _capitalizeWords(String input) {
-    return input.split('_').map((word) {
-      if (word.isEmpty) return '';
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    return input
+        .split('_')
+        .map((word) {
+          if (word.isEmpty) return '';
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
   }
 
   @override
@@ -506,7 +538,7 @@ if (result == OkCancelResult.ok) {
                   compassEnabled: true,
                   mapToolbarEnabled: false,
                 ),
-                
+
                 // Loading overlay
                 if (_isFetching)
                   Container(
@@ -516,7 +548,9 @@ if (result == OkCancelResult.ok) {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                           SizedBox(height: 16),
                           Text(
@@ -527,7 +561,7 @@ if (result == OkCancelResult.ok) {
                       ),
                     ),
                   ),
-                
+
                 // Filter button
                 Align(
                   alignment: Alignment.bottomCenter,
@@ -539,24 +573,33 @@ if (result == OkCancelResult.ok) {
                         // Results count
                         if (_places.isNotEmpty && !_isFetching)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black87,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               "${_places.length} places found",
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
-                        
+
                         const SizedBox(height: 8),
-                        
+
                         // Filter button
                         GestureDetector(
                           onTap: _showFilterBottomSheet,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(24),
@@ -573,16 +616,20 @@ if (result == OkCancelResult.ok) {
                               children: [
                                 Icon(
                                   Icons.filter_alt_outlined,
-                                  color: _selectedFilters.isEmpty ? Colors.grey[600] : Colors.blue,
+                                  color: _selectedFilters.isEmpty
+                                      ? Colors.grey[600]
+                                      : Colors.blue,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  _selectedFilters.isEmpty 
-                                      ? "Tap to Filter" 
+                                  _selectedFilters.isEmpty
+                                      ? "Tap to Filter"
                                       : "${_selectedFilters.length} filters applied",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: _selectedFilters.isEmpty ? Colors.grey[600] : Colors.blue,
+                                    color: _selectedFilters.isEmpty
+                                        ? Colors.grey[600]
+                                        : Colors.blue,
                                   ),
                                 ),
                               ],
