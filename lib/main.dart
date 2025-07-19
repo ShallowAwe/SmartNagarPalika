@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_nagarpalika/Screens/homeScreen.dart';
 import 'package:smart_nagarpalika/Screens/nearMeScreen.dart';
 // import 'package:smart_nagarpalika/Screens/complaintRegistrationScreen.dart';
 
@@ -34,7 +35,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       // home: const ComplaintRegistrationScreen(),
-      home: const NearMeScreen(),
+      home:  HomeScreen(),
     );
   }
 }

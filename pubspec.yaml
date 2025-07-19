@@ -41,6 +41,7 @@ dependencies:
   permission_handler: ^12.0.1
   url_launcher: ^6.3.1
   adaptive_dialog: ^2.4.2
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +76,22 @@ flutter:
     - lib/assets/School.png
     - lib/assets/restroom.png
     - lib/assets/default.png
+    - lib/assets/billBoard.png
+    - lib/assets/Certificates.png
+    - lib/assets/complaint.png
+    - lib/assets/helpDesk.png
+    - lib/assets/licence.png
+    - lib/assets/lightBill.png
+    - lib/assets/news.png
+    - lib/assets/pet.png
+    - lib/assets/PropertyTax.png
+    - lib/assets/treeTreaming.png
+    - lib/assets/WaterTax.png
+    - lib/assets/homeSelected.png
+    - lib/assets/nearMe.png
+    - lib/assets/Seervices (1).png
+    - lib/assets/homeUnSelected.png
+    - lib/assets/profile.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
