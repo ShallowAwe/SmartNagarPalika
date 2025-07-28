@@ -33,24 +33,26 @@ class ComplaintModel {
       'location': location?.toJson(),
       'attachments': attachments,
       'createdAt': createdAt.toIso8601String(),
-      'status': status.toString(),
+      'status': status.name, // ✅ Clean status serialization
     };
   }
 
   factory ComplaintModel.fromJson(Map<String, dynamic> json) {
     return ComplaintModel(
-      id: json['id'],
+      id: json['id'].toString(),
       description: json['description'],
       category: json['category'],
-      address: json['address'],
-      landmark: json['landmark'],
-      location: json['location'] != null
-          ? LocationData.fromJson(json['location'])
-          : null,
-      attachments: List<String>.from(json['attachments'] ?? []),
+      address: json['location'] ?? '', // Use 'location' as address
+      landmark: '', // No landmark in backend
+      location: null, // No location object in backend
+      attachments:
+          (json['imageUrls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       createdAt: DateTime.parse(json['createdAt']),
       status: ComplaintStatus.values.firstWhere(
-        (e) => e.toString() == json['status'],
+        (e) => e.name.toLowerCase() == (json['status'] as String).toLowerCase(),
         orElse: () => ComplaintStatus.pending,
       ),
     );
@@ -93,7 +95,7 @@ class LocationData {
       latitude: json['latitude'],
       longitude: json['longitude'],
       accuracy: json['accuracy'],
-      timestamp: DateTime.parse(json['timestamp']),
+      timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
     );
   }
 }
@@ -102,9 +104,8 @@ enum ComplaintStatus {
   pending,
   inProgress,
   resolved,
-  rejected,
+  // rejected
 }
-
 
 class ComplaintCategory {
   static const String streetLight = 'Street light issue (रस्त्यावरील दिवे)';

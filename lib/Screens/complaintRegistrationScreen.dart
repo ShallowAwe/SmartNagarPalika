@@ -9,7 +9,6 @@ import 'package:smart_nagarpalika/Model/coplaintModel.dart';
 import 'package:smart_nagarpalika/Screens/ComplaintsScreen.dart';
 import 'package:smart_nagarpalika/Services/camera_service.dart';
 import 'package:smart_nagarpalika/Services/complaintService.dart';
-// import 'package:smart_nagarpalika/Services/complaintService.dart';
 import 'package:smart_nagarpalika/utils/formValidator.dart';
 import 'package:smart_nagarpalika/widgets/mapWidget.dart';
 
@@ -24,19 +23,17 @@ class ComplaintRegistrationScreen extends StatefulWidget {
 class _ComplaintRegistrationScreenState
     extends State<ComplaintRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-  //final  _complaintService = ComplaintService;// we use the singleton instance directly/../././
-  // List od images./././
+
   List<XFile>? _mediaFiles = [];
-  // List of complaints
   List<ComplaintModel> complaints = [];
-  // Form controllers
+
   final _descriptionController = TextEditingController();
   final _addressController = TextEditingController();
   final _landmarkController = TextEditingController();
 
-  // Form state
   String? _selectedCategory;
   Position? _currentLocation;
+
   bool _isSubmitting = false;
   List<String> _attachments = [];
 
@@ -88,27 +85,18 @@ class _ComplaintRegistrationScreenState
     }
   }
 
-  // List<ComplaintModel> _submmitComplaint() {
-  //   final complaint = ComplaintModel(
-  //     id: DateTime.now().millisecondsSinceEpoch.toString(),
-  //     description: _descriptionController.text.trim(),
-  //     category: _selectedCategory!,
-  //     address: _addressController.text.trim(),
-  //     landmark: _landmarkController.text.trim().isEmpty
-  //         ? null
-  //         : _landmarkController.text.trim(),
-  //     location: LocationData.fromPosition(_currentLocation!),
-  //     attachments: _attachments,
-  //     createdAt: DateTime.now(),
-
-  //   );
-  //   complaints.add(complaint);
-  //   return complaints;
-  // }
-
-  // when we ready to apply back end    remeber to check this first Ok
   Future<void> _submitComplaint() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a complaint category'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
@@ -124,7 +112,6 @@ class _ComplaintRegistrationScreenState
       return;
     }
 
-    // Add validation for attachments
     if (_attachments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -140,9 +127,6 @@ class _ComplaintRegistrationScreenState
     });
 
     try {
-      // Test connectivity first
-      // await ComplaintService.instance.testConnectivity();
-
       final complaint = ComplaintModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         description: _descriptionController.text.trim(),
@@ -152,14 +136,13 @@ class _ComplaintRegistrationScreenState
             ? null
             : _landmarkController.text.trim(),
         location: LocationData.fromPosition(_currentLocation!),
-        attachments: _attachments,
+        attachments: List<String>.from(_attachments),
         createdAt: DateTime.now(),
       );
 
-      await ComplaintService.instance.submitComplaint(complaint, "rudra");
+      await ComplaintService.instance.submitComplaint(complaint, "user1");
 
       if (mounted) {
-        setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Complaint submitted successfully!'),
@@ -169,7 +152,6 @@ class _ComplaintRegistrationScreenState
         _clearForm();
       }
     } catch (e) {
-      print('❌ Form submission error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -191,9 +173,13 @@ class _ComplaintRegistrationScreenState
     _descriptionController.clear();
     _addressController.clear();
     _landmarkController.clear();
+    _formKey.currentState?.reset();
     setState(() {
       _selectedCategory = null;
       _attachments.clear();
+      _mediaFiles = [];
+      // If you also want to reset location, uncomment this:
+      // _currentLocation = null;
     });
   }
 
@@ -461,37 +447,46 @@ class _ComplaintRegistrationScreenState
             ? null
             : () async {
                 try {
-                  // Submit the complaint
+                  // Gather all needed values BEFORE submission and form clearing
+                  final complaintId = DateTime.now().millisecondsSinceEpoch
+                      .toString();
+                  final description = _descriptionController.text.trim();
+                  final category = _selectedCategory;
+                  final address = _addressController.text.trim();
+                  final landmark = _landmarkController.text.trim().isEmpty
+                      ? null
+                      : _landmarkController.text.trim();
+                  final location = _currentLocation;
+                  final attachmentsCopy = List<String>.from(_attachments);
+
+                  // Call submit complaint
                   await _submitComplaint();
 
-                  // Create the complaint object that was submitted
+                  // Use gathered values. Safe to use ! since validated in _submitComplaint
                   final newComplaint = ComplaintModel(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    description: _descriptionController.text.trim(),
-                    category: _selectedCategory!,
-                    address: _addressController.text.trim(),
-                    landmark: _landmarkController.text.trim().isEmpty
-                        ? null
-                        : _landmarkController.text.trim(),
-                    location: LocationData.fromPosition(_currentLocation!),
-                    attachments: _attachments,
+                    id: complaintId,
+                    description: description,
+                    category: category!,
+                    address: address,
+                    landmark: landmark,
+                    location: LocationData.fromPosition(location!),
+                    attachments: attachmentsCopy,
                     createdAt: DateTime.now(),
                   );
 
-                  // Notify parent to update the complaints list
                   onComplaintSubmitted(newComplaint);
 
                   // Navigate to complaints screen
-                  // Replace the navigation part with:
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => Complaintsscreen(
-                        complaints: [...complaints, newComplaint],
+                  if (mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => Complaintsscreen(
+                          // complaints: [...complaints]
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 } catch (e) {
-                  // Error handling is already done in _submitComplaint
                   print('Submit button error: $e');
                 }
               },

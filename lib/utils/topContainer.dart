@@ -6,7 +6,7 @@ class TopContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 300, 
+      height: 300,
       width: double.infinity,
       // padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -15,8 +15,10 @@ class TopContainer extends StatelessWidget {
           bottomRight: Radius.circular(24),
         ),
         color: Colors.white,
-        image:  DecorationImage(
-          image: NetworkImage('https://media.assettype.com/freepressjournal/2023-09/f4cad33d-d280-49f4-9279-e488fab84351/PMC_building__2_.jpg?width=1200'),
+        image: DecorationImage(
+          image: NetworkImage(
+            'https://media.assettype.com/freepressjournal/2023-09/f4cad33d-d280-49f4-9279-e488fab84351/PMC_building__2_.jpg?width=1200',
+          ),
           fit: BoxFit.cover,
         ),
         boxShadow: [
@@ -24,7 +26,7 @@ class TopContainer extends StatelessWidget {
             color: Colors.grey.withAlpha(204),
             blurRadius: 4,
             offset: const Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Row(

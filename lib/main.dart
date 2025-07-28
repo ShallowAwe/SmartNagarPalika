@@ -3,7 +3,8 @@ import 'package:smart_nagarpalika/Screens/homeScreen.dart';
 
 // import 'package:smart_nagarpalika/Screens/complaintRegistrationScreen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
