@@ -4,7 +4,7 @@ final List<Map<String, dynamic>> quickServices = [
   {
     'label': 'Complaint',
     'imagePath': 'assets/complaint.png',
-    'screen': Complaintsscreen(),
+    'screen': Complaintsscreen(department: []),
   },
   {
     'label': 'Certificates',

@@ -6,9 +6,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
+import 'package:smart_nagarpalika/Model/departmentModel.dart';
 import 'package:smart_nagarpalika/Screens/ComplaintsScreen.dart';
 import 'package:smart_nagarpalika/Services/camera_service.dart';
 import 'package:smart_nagarpalika/Services/complaintService.dart';
+import 'package:smart_nagarpalika/Services/department_service.dart';
 import 'package:smart_nagarpalika/utils/formValidator.dart';
 import 'package:smart_nagarpalika/widgets/mapWidget.dart';
 
@@ -36,6 +38,8 @@ class _ComplaintRegistrationScreenState
 
   bool _isSubmitting = false;
   List<String> _attachments = [];
+  Department? _selectedDepartment;
+  List<Department> _departments = [];
 
   @override
   void dispose() {
@@ -49,6 +53,12 @@ class _ComplaintRegistrationScreenState
     setState(() {
       _currentLocation = position;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDepartments();
   }
 
   Future<void> _handleFileUpload() async {
@@ -85,12 +95,21 @@ class _ComplaintRegistrationScreenState
     }
   }
 
+  //fetch departments
+  Future<void> _fetchDepartments() async {
+    final departments = await DepartmentService.instance.getDepartments();
+    print("departments: $departments");
+    setState(() {
+      _departments = departments;
+    });
+  }
+
   Future<void> _submitComplaint() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    if (_selectedCategory == null) {
+    if (_selectedDepartment == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a complaint category'),
@@ -130,7 +149,7 @@ class _ComplaintRegistrationScreenState
       final complaint = ComplaintModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         description: _descriptionController.text.trim(),
-        category: _selectedCategory!,
+        departmentId: _selectedDepartment!.id,
         address: _addressController.text.trim(),
         landmark: _landmarkController.text.trim().isEmpty
             ? null
@@ -175,7 +194,7 @@ class _ComplaintRegistrationScreenState
     _landmarkController.clear();
     _formKey.currentState?.reset();
     setState(() {
-      _selectedCategory = null;
+      _selectedDepartment = null;
       _attachments.clear();
       _mediaFiles = [];
       // If you also want to reset location, uncomment this:
@@ -205,7 +224,7 @@ class _ComplaintRegistrationScreenState
             children: [
               _buildDescriptionField(),
               const SizedBox(height: 16),
-              _buildCategoryField(),
+              _buildCategoryField(_departments),
               const SizedBox(height: 16),
               _buildFileUploadSection(),
               const SizedBox(height: 16),
@@ -249,29 +268,31 @@ class _ComplaintRegistrationScreenState
     );
   }
 
-  Widget _buildCategoryField() {
+  Widget _buildCategoryField(List<Department> departments) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildRequiredLabel('Complaint Category (तक्रार श्रेणी)'),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          decoration: _buildInputDecoration('Select category'),
-          value: _selectedCategory,
-          items: ComplaintCategory.allCategories
+        DropdownButtonFormField<Department>(
+          decoration: _buildInputDecoration('Select department'),
+          value: _selectedDepartment,
+          items: departments
               .map(
-                (category) => DropdownMenuItem(
-                  value: category,
-                  child: Text(category, style: const TextStyle(fontSize: 14)),
+                (department) => DropdownMenuItem<Department>(
+                  value: department,
+                  child: Text(department.name),
                 ),
               )
               .toList(),
           onChanged: (value) {
             setState(() {
-              _selectedCategory = value;
+              print("value: ${value?.name}");
+              _selectedDepartment = value;
             });
           },
-          validator: FormValidator.validateCategory,
+          validator: (value) =>
+              value == null ? 'Please select a department' : null,
         ),
       ],
     );
@@ -466,7 +487,7 @@ class _ComplaintRegistrationScreenState
                   final newComplaint = ComplaintModel(
                     id: complaintId,
                     description: description,
-                    category: category!,
+                    departmentId: _selectedDepartment!.id,
                     address: address,
                     landmark: landmark,
                     location: LocationData.fromPosition(location!),
@@ -481,6 +502,7 @@ class _ComplaintRegistrationScreenState
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (context) => Complaintsscreen(
+                          department: _departments,
                           // complaints: [...complaints]
                         ),
                       ),

@@ -5,13 +5,16 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:smart_nagarpalika/Model/departmentModel.dart';
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
 import 'package:smart_nagarpalika/Screens/complaintRegistrationScreen.dart';
 import 'package:smart_nagarpalika/Services/complaintService.dart';
+import 'package:smart_nagarpalika/Services/department_service.dart';
 
 class Complaintsscreen extends StatefulWidget {
+  final List<Department> department;
   // final List<ComplaintModel> complaints;
-  const Complaintsscreen({super.key});
+  const Complaintsscreen({super.key, required this.department});
 
   @override
   State<Complaintsscreen> createState() => _ComplaintsscreenState();
@@ -20,12 +23,29 @@ class Complaintsscreen extends StatefulWidget {
 class _ComplaintsscreenState extends State<Complaintsscreen> {
   late Future<List<ComplaintModel>> complaints;
   String username = 'user1';
+  List<Department> _departments = [];
   @override
   void initState() {
     super.initState();
     complaints = ComplaintService.instance.getComplaintsByUsername(username);
+    _fetchDepartments();
   }
 
+  Future<void> _fetchDepartments() async {
+    final departments = await DepartmentService.instance.getDepartments();
+    setState(() {
+      _departments = departments;
+    });
+  }
+
+  String _getDepartmentName(int? id) {
+    if (id == null) return 'Unknown';
+    final dept = _departments.firstWhere(
+      (d) => d.id == id,
+      orElse: () => Department(id: id, name: 'Unknown'),
+    );
+    return dept.name;
+  }
   // Hard-coded status generator
   // String _getRandomStatus() {
   //   // final statuses = ['Pending', 'In Progress', 'Resolved', 'Rejected'];
@@ -276,7 +296,7 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          complaint.category,
+                          complaint.departmentId.toString(),
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -347,7 +367,10 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                   children: [
                     _buildDetailRow('Complaint ID:', complaint.id),
                     _buildDetailRow('Date:', _formatDate(complaint.createdAt)),
-                    _buildDetailRow('Category:', complaint.category),
+                    _buildDetailRow(
+                      'Department:',
+                      _getDepartmentName(complaint.departmentId),
+                    ),
                     _buildDetailRow('Address:', complaint.address),
                     if (complaint.location != null)
                       _buildDetailRow(

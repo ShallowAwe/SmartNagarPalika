@@ -3,10 +3,11 @@ import 'package:geolocator/geolocator.dart';
 class ComplaintModel {
   final String id;
   final String description;
-  final String category;
+  final int? departmentId;
   final String address;
   final String? landmark;
   final LocationData? location;
+  final int? wardId;
   final List<String> attachments;
   final DateTime createdAt;
   final ComplaintStatus status;
@@ -14,10 +15,11 @@ class ComplaintModel {
   ComplaintModel({
     required this.id,
     required this.description,
-    required this.category,
+    required this.departmentId,
     required this.address,
     this.landmark,
     this.location,
+    this.wardId,
     this.attachments = const [],
     required this.createdAt,
     this.status = ComplaintStatus.pending,
@@ -27,10 +29,11 @@ class ComplaintModel {
     return {
       'id': id,
       'description': description,
-      'category': category,
+      'department': departmentId,
       'address': address,
       'landmark': landmark,
       'location': location?.toJson(),
+      'ward': wardId,
       'attachments': attachments,
       'createdAt': createdAt.toIso8601String(),
       'status': status.name, // ✅ Clean status serialization
@@ -41,10 +44,11 @@ class ComplaintModel {
     return ComplaintModel(
       id: json['id'].toString(),
       description: json['description'],
-      category: json['category'],
+      departmentId: json['department'],
       address: json['location'] ?? '', // Use 'location' as address
       landmark: '', // No landmark in backend
       location: null, // No location object in backend
+      wardId: json['ward'],
       attachments:
           (json['imageUrls'] as List<dynamic>?)
               ?.map((e) => e.toString())
@@ -105,20 +109,4 @@ enum ComplaintStatus {
   inProgress,
   resolved,
   // rejected
-}
-
-class ComplaintCategory {
-  static const String streetLight = 'Street light issue (रस्त्यावरील दिवे)';
-  static const String garbageCollection = 'Garbage Collection (कचरा गोळा करणे)';
-  static const String drainage = 'Drainage problems (नाल्याची समस्या)';
-  static const String waterSupply = 'Water Supply (पाणी पुरवठा)';
-  static const String roadMaintenance = 'Road Maintenance (रस्त्याची देखभाल)';
-
-  static List<String> get allCategories => [
-    streetLight,
-    garbageCollection,
-    drainage,
-    waterSupply,
-    roadMaintenance,
-  ];
 }
