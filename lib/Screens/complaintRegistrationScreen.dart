@@ -7,10 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
 import 'package:smart_nagarpalika/Model/departmentModel.dart';
+import 'package:smart_nagarpalika/Model/ward_model.dart';
 import 'package:smart_nagarpalika/Screens/ComplaintsScreen.dart';
 import 'package:smart_nagarpalika/Services/camera_service.dart';
 import 'package:smart_nagarpalika/Services/complaintService.dart';
 import 'package:smart_nagarpalika/Services/department_service.dart';
+import 'package:smart_nagarpalika/Services/wards_service.dart';
 import 'package:smart_nagarpalika/utils/formValidator.dart';
 import 'package:smart_nagarpalika/widgets/mapWidget.dart';
 
@@ -27,19 +29,17 @@ class _ComplaintRegistrationScreenState
   final _formKey = GlobalKey<FormState>();
 
   List<XFile>? _mediaFiles = [];
-  List<ComplaintModel> complaints = [];
-
   final _descriptionController = TextEditingController();
   final _addressController = TextEditingController();
   final _landmarkController = TextEditingController();
 
-  String? _selectedCategory;
   Position? _currentLocation;
-
   bool _isSubmitting = false;
   List<String> _attachments = [];
   Department? _selectedDepartment;
+  WardModel? _selectedWard;
   List<Department> _departments = [];
+  List<WardModel> _wards = [];
 
   @override
   void dispose() {
@@ -59,6 +59,7 @@ class _ComplaintRegistrationScreenState
   void initState() {
     super.initState();
     _fetchDepartments();
+    _fetchWards();
   }
 
   Future<void> _handleFileUpload() async {
@@ -95,12 +96,17 @@ class _ComplaintRegistrationScreenState
     }
   }
 
-  //fetch departments
   Future<void> _fetchDepartments() async {
     final departments = await DepartmentService.instance.getDepartments();
-    print("departments: $departments");
     setState(() {
       _departments = departments;
+    });
+  }
+
+  Future<void> _fetchWards() async {
+    final wards = await WardsService.instance.getWards();
+    setState(() {
+      _wards = wards;
     });
   }
 
@@ -150,6 +156,7 @@ class _ComplaintRegistrationScreenState
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         description: _descriptionController.text.trim(),
         departmentId: _selectedDepartment!.id,
+        wardId: _selectedWard!.id,
         address: _addressController.text.trim(),
         landmark: _landmarkController.text.trim().isEmpty
             ? null
@@ -169,6 +176,13 @@ class _ComplaintRegistrationScreenState
           ),
         );
         _clearForm();
+
+        // Navigate to complaints screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => Complaintsscreen(department: _departments),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -195,10 +209,9 @@ class _ComplaintRegistrationScreenState
     _formKey.currentState?.reset();
     setState(() {
       _selectedDepartment = null;
+      _selectedWard = null;
       _attachments.clear();
       _mediaFiles = [];
-      // If you also want to reset location, uncomment this:
-      // _currentLocation = null;
     });
   }
 
@@ -224,7 +237,7 @@ class _ComplaintRegistrationScreenState
             children: [
               _buildDescriptionField(),
               const SizedBox(height: 16),
-              _buildCategoryField(_departments),
+              _buildCategoryField(),
               const SizedBox(height: 16),
               _buildFileUploadSection(),
               const SizedBox(height: 16),
@@ -234,14 +247,7 @@ class _ComplaintRegistrationScreenState
               const SizedBox(height: 16),
               _buildLocationSection(),
               const SizedBox(height: 24),
-              _buildSubmitButton(
-                complaints,
-                onComplaintSubmitted: (ComplaintModel submittedComplaint) {
-                  setState(() {
-                    complaints.add(submittedComplaint);
-                  });
-                },
-              ),
+              _buildSubmitButton(),
             ],
           ),
         ),
@@ -268,7 +274,7 @@ class _ComplaintRegistrationScreenState
     );
   }
 
-  Widget _buildCategoryField(List<Department> departments) {
+  Widget _buildCategoryField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -277,7 +283,7 @@ class _ComplaintRegistrationScreenState
         DropdownButtonFormField<Department>(
           decoration: _buildInputDecoration('Select department'),
           value: _selectedDepartment,
-          items: departments
+          items: _departments
               .map(
                 (department) => DropdownMenuItem<Department>(
                   value: department,
@@ -287,12 +293,30 @@ class _ComplaintRegistrationScreenState
               .toList(),
           onChanged: (value) {
             setState(() {
-              print("value: ${value?.name}");
               _selectedDepartment = value;
             });
           },
           validator: (value) =>
               value == null ? 'Please select a department' : null,
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<WardModel>(
+          decoration: _buildInputDecoration("Choose your ward"),
+          items: _wards
+              .map(
+                (ward) => DropdownMenuItem<WardModel>(
+                  value: ward,
+                  child: Text(ward.wardName.toString()),
+                ),
+              )
+              .toList(),
+          value: _selectedWard,
+          onChanged: (value) {
+            setState(() {
+              _selectedWard = value;
+            });
+          },
+          validator: (value) => value == null ? 'Please select a ward' : null,
         ),
       ],
     );
@@ -457,61 +481,11 @@ class _ComplaintRegistrationScreenState
     );
   }
 
-  Widget _buildSubmitButton(
-    List<ComplaintModel> complaints, {
-    required Function(ComplaintModel) onComplaintSubmitted,
-  }) {
+  Widget _buildSubmitButton() {
     return SizedBox(
       width: MediaQuery.of(context).size.width,
       child: ElevatedButton(
-        onPressed: _isSubmitting
-            ? null
-            : () async {
-                try {
-                  // Gather all needed values BEFORE submission and form clearing
-                  final complaintId = DateTime.now().millisecondsSinceEpoch
-                      .toString();
-                  final description = _descriptionController.text.trim();
-                  final category = _selectedCategory;
-                  final address = _addressController.text.trim();
-                  final landmark = _landmarkController.text.trim().isEmpty
-                      ? null
-                      : _landmarkController.text.trim();
-                  final location = _currentLocation;
-                  final attachmentsCopy = List<String>.from(_attachments);
-
-                  // Call submit complaint
-                  await _submitComplaint();
-
-                  // Use gathered values. Safe to use ! since validated in _submitComplaint
-                  final newComplaint = ComplaintModel(
-                    id: complaintId,
-                    description: description,
-                    departmentId: _selectedDepartment!.id,
-                    address: address,
-                    landmark: landmark,
-                    location: LocationData.fromPosition(location!),
-                    attachments: attachmentsCopy,
-                    createdAt: DateTime.now(),
-                  );
-
-                  onComplaintSubmitted(newComplaint);
-
-                  // Navigate to complaints screen
-                  if (mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => Complaintsscreen(
-                          department: _departments,
-                          // complaints: [...complaints]
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  print('Submit button error: $e');
-                }
-              },
+        onPressed: _isSubmitting ? null : _submitComplaint,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,

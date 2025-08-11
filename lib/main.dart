@@ -5,8 +5,6 @@ import 'package:smart_nagarpalika/Services/logger_service.dart';
 // import 'package:smart_nagarpalika/Screens/complaintRegistrationScreen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   // Initialize logger service
   final logger = LoggerService.instance;
   logger.info('🚀 Smart Nagarpalika App Starting...');

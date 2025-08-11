@@ -5,11 +5,13 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:smart_nagarpalika/Model/complaint_response_model.dart';
 import 'package:smart_nagarpalika/Model/departmentModel.dart';
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
 import 'package:smart_nagarpalika/Screens/complaintRegistrationScreen.dart';
 import 'package:smart_nagarpalika/Services/complaintService.dart';
 import 'package:smart_nagarpalika/Services/department_service.dart';
+import 'package:smart_nagarpalika/Services/logger_service.dart';
 
 class Complaintsscreen extends StatefulWidget {
   final List<Department> department;
@@ -21,31 +23,61 @@ class Complaintsscreen extends StatefulWidget {
 }
 
 class _ComplaintsscreenState extends State<Complaintsscreen> {
-  late Future<List<ComplaintModel>> complaints;
+  late Future<List<ComplaintResponseModel>> complaints;
   String username = 'user1';
   List<Department> _departments = [];
+  final LoggerService _logger = LoggerService.instance;
+
   @override
   void initState() {
     super.initState();
+    _logger.methodEntry('ComplaintsScreen.initState', {
+      'username': username,
+      'departments_count': widget.department.length,
+    });
+
     complaints = ComplaintService.instance.getComplaintsByUsername(username);
     _fetchDepartments();
+
+    _logger.methodExit('ComplaintsScreen.initState');
+  }
+
+  @override
+  void dispose() {
+    _logger.methodEntry('ComplaintsScreen.dispose');
+    super.dispose();
+    _logger.methodExit('ComplaintsScreen.dispose');
   }
 
   Future<void> _fetchDepartments() async {
-    final departments = await DepartmentService.instance.getDepartments();
-    setState(() {
-      _departments = departments;
-    });
+    _logger.methodEntry('_fetchDepartments');
+
+    try {
+      final departments = await DepartmentService.instance.getDepartments();
+      _logger.info('Successfully fetched ${departments.length} departments');
+
+      setState(() {
+        _departments = departments;
+      });
+
+      _logger.methodExit(
+        '_fetchDepartments',
+        '${departments.length} departments loaded',
+      );
+    } catch (e) {
+      _logger.error('Failed to fetch departments', e);
+      _logger.methodExit('_fetchDepartments', 'Exception occurred');
+    }
   }
 
-  String _getDepartmentName(int? id) {
-    if (id == null) return 'Unknown';
-    final dept = _departments.firstWhere(
-      (d) => d.id == id,
-      orElse: () => Department(id: id, name: 'Unknown'),
-    );
-    return dept.name;
-  }
+  // String _getDepartmentName(? id) {
+  //   if (id == null) return 'Unknown';
+  //   final dept = _departments.firstWhere(
+  //     (d) => d.id == id,
+  //     orElse: () => Department(id: id, name: 'Unknown'),
+  //   );
+  //   return dept.name;
+  // }
   // Hard-coded status generator
   // String _getRandomStatus() {
   //   // final statuses = ['Pending', 'In Progress', 'Resolved', 'Rejected'];
@@ -96,6 +128,8 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
 
   @override
   Widget build(BuildContext context) {
+    _logger.methodEntry('ComplaintsScreen.build');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Complaints'),
@@ -103,16 +137,20 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: FutureBuilder<List<ComplaintModel>>(
+      body: FutureBuilder<List<dynamic>>(
         future: complaints,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
+            _logger.debug('Complaints loading - showing progress indicator');
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
+            _logger.error('Error loading complaints', snapshot.error);
             return Center(child: Text('Error: ${snapshot.error}'));
           }
           final complaints = snapshot.data ?? [];
+          _logger.debug('Complaints loaded: ${complaints.length} items');
+
           return complaints.isEmpty
               ? Center(
                   child: Column(
@@ -145,6 +183,9 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                         icon: const Icon(Icons.add),
                         label: const Text('Add Complaint'),
                         onPressed: () {
+                          _logger.info(
+                            'User tapped "Add Complaint" button from empty state',
+                          );
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) =>
@@ -173,9 +214,12 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                 );
         },
       ),
-      floatingActionButton: complaints.toString().isEmpty
-          ? FloatingActionButton(
+      floatingActionButton: complaints.toString().isNotEmpty
+          ? FloatingActionButton.extended(
               onPressed: () {
+                _logger.info(
+                  'User tapped floating action button to add complaint',
+                );
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const ComplaintRegistrationScreen(),
@@ -183,13 +227,17 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                 );
               },
               backgroundColor: Colors.blue,
-              child: const Icon(Icons.add, color: Colors.white),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('New Complaint'),
             )
           : null,
     );
   }
 
-  Widget buildComplaintCard(ComplaintModel complaint) {
+  Widget buildComplaintCard(ComplaintResponseModel complaint) {
+    _logger.debug('Building complaint card for ID: ${complaint.id}');
+
     final status = complaint.status?.toString();
     final statusColor = _getStatusColor(status);
     final statusIcon = _getStatusIcon(status);
@@ -199,14 +247,20 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () => _showComplaintDetailsPopup(complaint, status),
+        onTap: () {
+          _logger.info('User tapped complaint card for ID: ${complaint.id}');
+          _showComplaintDetailsPopup(
+            complaint, // Pass the correct object here
+            status,
+          );
+        },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               // Image preview with error handling
-              _buildImagePreview(complaint.attachments),
+              _buildImagePreview(complaint.imageUrls),
               const SizedBox(width: 12),
               // Text content
               Expanded(
@@ -296,7 +350,7 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          complaint.departmentId.toString(),
+                          complaint.departmentName ?? 'null',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -315,7 +369,17 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
     );
   }
 
-  void _showComplaintDetailsPopup(ComplaintModel complaint, String? status) {
+  void _showComplaintDetailsPopup(
+    ComplaintResponseModel complaint,
+    String? status,
+  ) {
+    _logger.methodEntry('_showComplaintDetailsPopup', {
+      'complaint_id': complaint.id,
+      'status': status,
+      'department': complaint.departmentName,
+      'imageUrl': complaint.imageUrls,
+    });
+
     final statusColor = _getStatusColor(status);
     final statusIcon = _getStatusIcon(status);
 
@@ -352,7 +416,10 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        _logger.info('User closed complaint details dialog');
+                        Navigator.pop(context);
+                      },
                       icon: const Icon(Icons.close),
                       iconSize: 20,
                     ),
@@ -365,18 +432,22 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailRow('Complaint ID:', complaint.id),
                     _buildDetailRow('Date:', _formatDate(complaint.createdAt)),
                     _buildDetailRow(
                       'Department:',
-                      _getDepartmentName(complaint.departmentId),
+                      complaint.departmentName ?? 'N/A',
                     ),
-                    _buildDetailRow('Address:', complaint.address),
-                    if (complaint.location != null)
-                      _buildDetailRow(
-                        'Landmark:',
-                        '${complaint.location!.latitude}, ${complaint.location!.longitude}',
-                      ),
+                    _buildDetailRow(
+                      'Address:',
+                      complaint.address.isNotEmpty ? complaint.address : 'N/A',
+                    ),
+                    _buildDetailRow(
+                      'Landmark:',
+                      complaint.landmark != null
+                          ? '${complaint.landmark!.latitude}, ${complaint.landmark!.longitude}'
+                          : 'N/A',
+                    ),
+                    _buildDetailRow('Ward', complaint.wardName ?? 'N/A'),
                     const SizedBox(height: 12),
                     const Text(
                       'Description:',
@@ -408,7 +479,7 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (complaint.attachments.isNotEmpty)
+                    if (complaint.imageUrls.isNotEmpty)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
@@ -420,7 +491,7 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: complaint.attachments.map((path) {
+                          children: complaint.imageUrls.map((path) {
                             return ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: CachedNetworkImage(
@@ -450,8 +521,14 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                                   ),
                                 ),
                                 errorWidget: (context, url, error) {
-                                  print('Error loading image: $error');
-                                  print('Failed URL: $url');
+                                  _logger.error(
+                                    'Error loading image in complaint details',
+                                    {
+                                      'url': url,
+                                      'error': error,
+                                      'complaint_id': complaint.id,
+                                    },
+                                  );
                                   return Container(
                                     width: 60,
                                     height: 60,
@@ -494,6 +571,9 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                               icon: const Icon(Icons.edit, size: 16),
                               label: const Text('Edit'),
                               onPressed: () {
+                                _logger.info(
+                                  'User tapped Edit button for complaint ID: ${complaint.id}',
+                                );
                                 Navigator.pop(context);
                                 // Add edit functionality here
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -516,6 +596,9 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                               icon: const Icon(Icons.delete, size: 16),
                               label: const Text('Cancel'),
                               onPressed: () {
+                                _logger.info(
+                                  'User tapped Cancel button for complaint ID: ${complaint.id}',
+                                );
                                 Navigator.pop(context);
                                 // Add cancel functionality here
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -541,6 +624,9 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                           icon: const Icon(Icons.rate_review, size: 16),
                           label: const Text('Rate & Review'),
                           onPressed: () {
+                            _logger.info(
+                              'User tapped Rate & Review button for complaint ID: ${complaint.id}',
+                            );
                             Navigator.pop(context);
                             // Add rating functionality here
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -564,6 +650,9 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                           icon: const Icon(Icons.info, size: 16),
                           label: const Text('Track Progress'),
                           onPressed: () {
+                            _logger.info(
+                              'User tapped Track Progress button for complaint ID: ${complaint.id}',
+                            );
                             Navigator.pop(context);
                             // Add tracking functionality here
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -627,10 +716,14 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
 }
 
 Widget _buildImagePreview(List<String> attachments) {
+  final LoggerService _logger = LoggerService.instance;
   String username = 'user1';
   String password = 'user1';
 
+  _logger.debug('Building image preview for ${attachments.length} attachments');
+
   if (attachments.isEmpty) {
+    _logger.debug('No attachments found - showing placeholder');
     return Container(
       width: 60,
       height: 60,
@@ -647,7 +740,7 @@ Widget _buildImagePreview(List<String> attachments) {
 
   // Check if URL is valid
   if (imageUrl.isEmpty) {
-    print('Image URL is empty: $firstImagePath');
+    _logger.warning('Image URL is empty', {'firstImagePath': firstImagePath});
     return Container(
       width: 60,
       height: 60,
@@ -665,27 +758,17 @@ Widget _buildImagePreview(List<String> attachments) {
 
   return ClipRRect(
     borderRadius: BorderRadius.circular(8),
-    child: CachedNetworkImage(
-      httpHeaders: {'Authorization': basicAuth},
-      cacheManager: CacheManager(
-        Config('smart_nagarpalika', stalePeriod: const Duration(days: 1)),
-      ),
-      imageUrl: imageUrl,
+    child: Image.network(
+      imageUrl,
       width: 60,
       height: 60,
       fit: BoxFit.cover,
-      placeholder: (context, url) => Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.grey.shade200,
-        ),
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
-      errorWidget: (context, url, error) {
-        print('Error loading image: $error');
-        print('Failed URL: $url');
+      headers: {'Authorization': basicAuth},
+      errorBuilder: (context, error, stackTrace) {
+        _logger.error('Error loading image in preview', {
+          'url': imageUrl,
+          'error': error,
+        });
         return Container(
           width: 60,
           height: 60,
@@ -694,6 +777,18 @@ Widget _buildImagePreview(List<String> attachments) {
             color: Colors.red.shade100,
           ),
           child: const Icon(Icons.broken_image, color: Colors.red),
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.grey.shade200,
+          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         );
       },
     ),

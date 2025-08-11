@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
+import 'package:smart_nagarpalika/Model/complaint_response_model.dart';
 
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
 import 'logger_service.dart';
@@ -15,7 +16,7 @@ class ComplaintService {
   ComplaintService._();
 
   final String _baseUrl =
-      'http://192.168.1.34:8080/complaints/register-with-images';
+      'http://192.168.1.35:8080/complaints/register-with-images';
   final String _username = 'user1';
   final String _password = 'user1';
   final _logger = LoggerService.instance;
@@ -37,6 +38,7 @@ class ComplaintService {
       'username': username,
       'description': complaint.description,
       'departmentId': complaint.departmentId,
+      'wardid': complaint.wardId,
       'attachmentsCount': complaint.attachments.length,
     });
 
@@ -53,6 +55,7 @@ class ComplaintService {
         'latitude': complaint.location?.latitude,
         'longitude': complaint.location?.longitude,
         'attachmentsCount': complaint.attachments.length,
+        'wards': complaint.wardId,
       });
 
       if (complaint.location?.latitude == null ||
@@ -69,6 +72,8 @@ class ComplaintService {
       request.fields['description'] = complaint.description;
       request.fields['department'] = complaint.departmentId.toString();
       request.fields['location'] = complaint.address;
+      request.fields['wards'] = complaint.wardId.toString();
+      print("Ward id : ${complaint.wardId}");
       request.fields['latitude'] = complaint.location!.latitude.toString();
       request.fields['longitude'] = complaint.location!.longitude.toString();
 
@@ -252,12 +257,14 @@ class ComplaintService {
   }
 
   // api to get all complaints by username
-  Future<List<ComplaintModel>> getComplaintsByUsername(String username) async {
+  Future<List<ComplaintResponseModel>> getComplaintsByUsername(
+    String username,
+  ) async {
     _logger.methodEntry('getComplaintsByUsername', {'username': username});
 
     // Use 10.0.2.2 if running on Android emulator
     final String _getComplaintsURL =
-        'http://192.168.1.34:8080/citizen/complaints/by-username?username=$username';
+        'http://192.168.1.35:8080/citizen/complaints/by-username?username=$username';
     final url = Uri.parse(_getComplaintsURL);
 
     try {
@@ -275,8 +282,8 @@ class ComplaintService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
 
-        List<ComplaintModel> complaints = data
-            .map((json) => ComplaintModel.fromJson(json))
+        List<ComplaintResponseModel> complaints = data
+            .map((json) => ComplaintResponseModel.fromJson(json))
             .toList();
 
         _logger.info(

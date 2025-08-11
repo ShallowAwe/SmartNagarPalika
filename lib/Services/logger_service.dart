@@ -37,7 +37,11 @@ class LoggerService {
 
   // Error level logging
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    _logger.e(message, error: error, stackTrace: stackTrace);
+    _logger.e(
+      message,
+      error: error?.toString(), // Safely convert error to String (handles null)
+      stackTrace: stackTrace,
+    );
   }
 
   // Fatal level logging
