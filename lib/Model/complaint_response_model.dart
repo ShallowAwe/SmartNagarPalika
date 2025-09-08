@@ -11,6 +11,9 @@ class ComplaintResponseModel {
   final ComplaintStatus status;
   final String? assignedEmployeeName; // Can be null in API
   final DateTime createdAt;
+  final String? employeeRemark; // Employee's description of work done
+  final List<String> employeeImages; // Images uploaded by employee
+  final DateTime? completedAt; // When complaint was completed
 
   ComplaintResponseModel({
     required this.id,
@@ -23,6 +26,9 @@ class ComplaintResponseModel {
     required this.status,
     this.assignedEmployeeName,
     required this.createdAt,
+    this.employeeRemark,
+    this.employeeImages = const [],
+    this.completedAt,
   });
 
   factory ComplaintResponseModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +52,15 @@ class ComplaintResponseModel {
       createdAt:
           DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
+      employeeRemark: json['employeeRemark'] as String?,
+      employeeImages:
+          (json['employeeImages'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'] as String)
+          : null,
     );
   }
 
@@ -61,6 +76,9 @@ class ComplaintResponseModel {
       'status': status,
       'assignedEmployeeName': assignedEmployeeName,
       'createdAt': createdAt.toIso8601String(),
+      'employeeRemark': employeeRemark,
+      'employeeImages': employeeImages,
+      'completedAt': completedAt?.toIso8601String(),
     };
   }
 
@@ -69,6 +87,9 @@ class ComplaintResponseModel {
 
   // Getter for landmark (since API doesn't provide it but your UI expects it)
   LocationData? get landmark => null;
+
+  // Helper method to check if complaint is completed
+  bool get isCompleted => status == ComplaintStatus.resolved && completedAt != null;
 }
 
 class LocationData {

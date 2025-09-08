@@ -10,7 +10,7 @@ class DepartmentService {
   DepartmentService._();
 
   final String _baseUrl =
-      'http://192.168.1.35:8080/citizen/get_departments_user';
+      'http://192.168.1.34:8080/citizen/get_departments_user';
   final String username = 'user1';
   final String password = 'user1';
   final _logger = LoggerService.instance;

@@ -32,7 +32,6 @@ class _ComplaintRegistrationScreenState
   final _descriptionController = TextEditingController();
   final _addressController = TextEditingController();
   final _landmarkController = TextEditingController();
-
   Position? _currentLocation;
   bool _isSubmitting = false;
   List<String> _attachments = [];
@@ -180,7 +179,8 @@ class _ComplaintRegistrationScreenState
         // Navigate to complaints screen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => Complaintsscreen(department: _departments),
+            builder: (context) => Complaintsscreen(department: [],),
+            
           ),
         );
       }

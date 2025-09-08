@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_nagarpalika/Screens/auth_screen.dart';
+import 'package:smart_nagarpalika/Screens/employee_screens/employee_complaint_view_screen.dart';
 import 'package:smart_nagarpalika/Screens/homeScreen.dart';
+import 'package:smart_nagarpalika/Screens/login_screen.dart';
 import 'package:smart_nagarpalika/Services/logger_service.dart';
 
 // import 'package:smart_nagarpalika/Screens/complaintRegistrationScreen.dart';
@@ -9,18 +13,19 @@ void main() async {
   final logger = LoggerService.instance;
   logger.info('🚀 Smart Nagarpalika App Starting...');
 
-  runApp(const MyApp());
+  runApp(ProviderScope(child: MyApp()) );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   // This widget is the root of your application.
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
+      theme: ThemeData( 
         // This is the theme of your application.
         //
         // TRY THIS: Try running your application with "flutter run". You'll see
@@ -39,7 +44,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       // home: const ComplaintRegistrationScreen(),
-      home: HomeScreen(),
+      home: AuthScreen(),
     );
   }
 }

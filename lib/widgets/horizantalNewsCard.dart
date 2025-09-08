@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:smart_nagarpalika/Data/dummyCardData.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_nagarpalika/Model/alert_model.dart';
+import 'package:smart_nagarpalika/provider/alert_service_provider.dart';
 
-class Horizantalnewscard extends StatefulWidget {
+class Horizantalnewscard extends ConsumerStatefulWidget {
   const Horizantalnewscard({super.key});
 
   @override
-  State<Horizantalnewscard> createState() => _HorizantalnewscardState();
+  ConsumerState<Horizantalnewscard> createState() => _HorizantalnewscardState();
 }
 
-class _HorizantalnewscardState extends State<Horizantalnewscard>
+class _HorizantalnewscardState extends ConsumerState<Horizantalnewscard>
     with TickerProviderStateMixin {
-  final List<Map<String, String>> cards = dummyCardData;
   final ScrollController _scrollController = ScrollController();
   int _focusedIndex = 0;
   late AnimationController _animationController;
@@ -34,14 +35,17 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
 
   void _onScroll() {
     final position = _scrollController.offset;
-    final cardWidth = 252.0; // 240 (card width) + 12 (spacing)
+    const cardWidth = 252.0; // 240 (card width) + 12 (spacing)
     final index = (position / cardWidth).round();
 
-    if (index != _focusedIndex && index >= 0 && index < cards.length) {
+    // ensure index changes properly
+    if (index != _focusedIndex && index >= 0) {
       setState(() {
         _focusedIndex = index;
       });
-      _animationController.forward();
+      _animationController
+        ..reset()
+        ..forward();
     }
   }
 
@@ -54,67 +58,39 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 200, // Increased height to accommodate all elements properly
-      child: Column(
-        children: [
-          // News cards
-          Expanded(
-            flex: 4, // Give more space to the cards
-            child: ListView.separated(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final card = cards[index];
-                final isFocused = index == _focusedIndex;
+    final alertsAsync = ref.watch(alertsProvider);
 
-                return _buildNewsCard(card, isFocused, index);
-              },
-            ),
-          ),
-          // Page indicator
-          // if (cards.length > 1)
-          //   Expanded(
-          //     flex: 1, // Give less space to the indicator
-          //     child: Padding(
-          //       padding: const EdgeInsets.symmetric(vertical: 8),
-          //       child: Row(
-          //         mainAxisAlignment: MainAxisAlignment.center,
-          //         children: List.generate(
-          //           cards.length,
-          //           (index) => AnimatedContainer(
-          //             duration: const Duration(milliseconds: 300),
-          //             margin: const EdgeInsets.symmetric(horizontal: 2),
-          //             width: index == _focusedIndex ? 20 : 8,
-          //             height: 8,
-          //             decoration: BoxDecoration(
-          //               color: index == _focusedIndex
-          //                   ? Theme.of(context).primaryColor
-          //                   : Colors.grey.withAlpha(76),
-          //               borderRadius: BorderRadius.circular(4),
-          //             ),
-          //           ),
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-        ],
+    return SizedBox(
+      height: 200,
+      child: alertsAsync.when(
+        data: (cards) {
+          return ListView.separated(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: cards.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final card = cards[index];
+              final isFocused = index == _focusedIndex;
+              return _buildNewsCard(card, isFocused, index);
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  Widget _buildNewsCard(Map<String, String> card, bool isFocused, int index) {
+  Widget _buildNewsCard(Alertmodel card, bool isFocused, int index) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth * 0.65; // 65% of screen width
-    final cardHeight = 160.0; // Fixed height for consistency
+    final cardWidth = screenWidth * 0.65;
+    const cardHeight = 160.0;
 
     return GestureDetector(
       onTap: () {
-        // TODO: Navigate to news detail
-        print('Tapped on news: ${card['title']}');
+        print('Tapped on news: ${card.title}');
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -142,52 +118,13 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
           borderRadius: BorderRadius.circular(14),
           child: Stack(
             children: [
-              // Image with loading and error states
-              _buildCardImage(card['image']!),
-
-              // Gradient overlay
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withAlpha(179),
-                        Colors.transparent,
-                        Colors.black.withAlpha(76),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Focus overlay
-              if (isFocused)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Theme.of(context).primaryColor.withAlpha(51),
-                          Colors.transparent,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Type badge
-              _buildTypeBadge(card['type']!, isFocused),
-
-              // Content
+              _buildCardImage(card.imageUrl ?? ""),
+              _buildGradientOverlay(),
+              if (isFocused) _buildFocusOverlay(context),
+              _buildTypeBadge(card.type, isFocused),
               _buildCardContent(card, isFocused),
-
-              // Play button for video content (if applicable)
-              if (card['type'] == 'Video') _buildPlayButton(isFocused),
+              if (card.type.toLowerCase() == 'video')
+                _buildPlayButton(isFocused),
             ],
           ),
         ),
@@ -195,7 +132,60 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
     );
   }
 
+  Widget _buildGradientOverlay() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.black.withAlpha(179),
+              Colors.transparent,
+              Colors.black.withAlpha(76),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFocusOverlay(BuildContext context) {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).primaryColor.withAlpha(51),
+              Colors.transparent,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCardImage(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        color: Colors.grey[300],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.image_not_supported, size: 40, color: Colors.grey[600]),
+            const SizedBox(height: 8),
+            Text(
+              'Image not available',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Positioned.fill(
       child: Image.network(
         imageUrl,
@@ -208,7 +198,7 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
                     ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
+                        loadingProgress.expectedTotalBytes!
                     : null,
                 strokeWidth: 2,
               ),
@@ -221,11 +211,8 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.image_not_supported,
-                  size: 40,
-                  color: Colors.grey[600],
-                ),
+                Icon(Icons.image_not_supported,
+                    size: 40, color: Colors.grey[600]),
                 const SizedBox(height: 8),
                 Text(
                   'Image not available',
@@ -302,7 +289,7 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
     );
   }
 
-  Widget _buildCardContent(Map<String, String> card, bool isFocused) {
+  Widget _buildCardContent(Alertmodel card, bool isFocused) {
     return Positioned(
       bottom: 12,
       left: 12,
@@ -326,7 +313,7 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
               ],
             ),
             child: Text(
-              card['title']!,
+              card.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -348,7 +335,7 @@ class _HorizantalnewscardState extends State<Horizantalnewscard>
               ],
             ),
             child: Text(
-              card['desc']!,
+              card.description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),

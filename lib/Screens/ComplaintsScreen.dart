@@ -23,10 +23,17 @@ class Complaintsscreen extends StatefulWidget {
 }
 
 class _ComplaintsscreenState extends State<Complaintsscreen> {
-  late Future<List<ComplaintResponseModel>> complaints;
+  Future<List<ComplaintResponseModel>>? complaints;
   String username = 'user1';
   List<Department> _departments = [];
   final LoggerService _logger = LoggerService.instance;
+
+  /// Refresh complaints data
+  Future<void> _refreshComplaints() async {
+    setState(() {
+      complaints = ComplaintService.instance.getComplaintsByUsername(username);
+    });
+  }
 
   @override
   void initState() {
@@ -70,21 +77,6 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
     }
   }
 
-  // String _getDepartmentName(? id) {
-  //   if (id == null) return 'Unknown';
-  //   final dept = _departments.firstWhere(
-  //     (d) => d.id == id,
-  //     orElse: () => Department(id: id, name: 'Unknown'),
-  //   );
-  //   return dept.name;
-  // }
-  // Hard-coded status generator
-  // String _getRandomStatus() {
-  //   // final statuses = ['Pending', 'In Progress', 'Resolved', 'Rejected'];
-  //   // final random = Random();
-  //   // return statuses[random.nextInt(statuses.length)];
-  // }
-
   String _normalizeStatus(String? status) {
     if (status == null || status.isEmpty) return '';
     // Extract after last dot, if present
@@ -126,6 +118,90 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
     }
   }
 
+  // Image viewer dialog
+  void _showImageViewer(List<String> imageUrls, int initialIndex) {
+    _logger.info('Opening image viewer', {
+      'totalImages': imageUrls.length,
+      'initialIndex': initialIndex,
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            PageView.builder(
+              itemCount: imageUrls.length,
+              controller: PageController(initialPage: initialIndex),
+              itemBuilder: (context, index) {
+                return Center(
+                  child: InteractiveViewer(
+                    child: CachedNetworkImage(
+                      httpHeaders: ComplaintService.instance.getAuthHeaders(),
+                      cacheManager: CacheManager(
+                        Config(
+                          'smart_nagarpalika',
+                          stalePeriod: const Duration(days: 1),
+                        ),
+                      ),
+                      imageUrl: imageUrls[index],
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                      errorWidget: (context, url, error) => const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error, color: Colors.white, size: 64),
+                            SizedBox(height: 16),
+                            Text(
+                              'Failed to load image',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              ),
+            ),
+            if (imageUrls.length > 1)
+              Positioned(
+                bottom: 30,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${initialIndex + 1} of ${imageUrls.length}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     _logger.methodEntry('ComplaintsScreen.build');
@@ -152,65 +228,77 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
           _logger.debug('Complaints loaded: ${complaints.length} items');
 
           return complaints.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.report_problem_outlined,
-                        size: 64,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No complaints yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Submit your first complaint to get started',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Complaint'),
-                        onPressed: () {
-                          _logger.info(
-                            'User tapped "Add Complaint" button from empty state',
-                          );
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const ComplaintRegistrationScreen(),
+              ? RefreshIndicator(
+                  onRefresh: _refreshComplaints,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.6,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.report_problem_outlined,
+                              size: 64,
+                              color: Colors.grey.shade400,
                             ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No complaints yet',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Submit your first complaint to get started',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Complaint'),
+                              onPressed: () {
+                                _logger.info(
+                                  'User tapped "Add Complaint" button from empty state',
+                                );
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ComplaintRegistrationScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: complaints.length,
-                  itemBuilder: (context, index) {
-                    return buildComplaintCard(complaints[index]);
-                  },
+              : RefreshIndicator(
+                  onRefresh: _refreshComplaints,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: complaints.length,
+                    itemBuilder: (context, index) {
+                      return buildComplaintCard(complaints[index]);
+                    },
+                  ),
                 );
         },
       ),
@@ -442,12 +530,31 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                       complaint.address.isNotEmpty ? complaint.address : 'N/A',
                     ),
                     _buildDetailRow(
-                      'Landmark:',
+                      'Coordinates:',
                       complaint.landmark != null
                           ? '${complaint.landmark!.latitude}, ${complaint.landmark!.longitude}'
                           : 'N/A',
                     ),
-                    _buildDetailRow('Ward', complaint.wardName ?? 'N/A'),
+                    _buildDetailRow('Ward:', complaint.wardName ?? 'N/A'),
+                    
+                    // Show resolved complaint specific data
+                    if (_normalizeStatus(status) == 'resolved') ...[
+                      _buildDetailRow(
+                        'Assigned Employee:',
+                        complaint.assignedEmployeeName ?? 'N/A',
+                      ),
+                      if (complaint.completedAt != null)
+                        _buildDetailRow(
+                          'Completed At:',
+                          _formatDate(complaint.completedAt!),
+                        ),
+                      if (complaint.employeeRemark != null && complaint.employeeRemark!.isNotEmpty)
+                        _buildDetailRow(
+                          'Employee Remark:',
+                          complaint.employeeRemark!,
+                        ),
+                    ],
+                    
                     const SizedBox(height: 12),
                     const Text(
                       'Description:',
@@ -491,57 +598,62 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: complaint.imageUrls.map((path) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: CachedNetworkImage(
-                                httpHeaders: ComplaintService.instance
-                                    .getAuthHeaders(),
-                                cacheManager: CacheManager(
-                                  Config(
-                                    'smart_nagarpalika',
-                                    stalePeriod: const Duration(days: 1),
-                                  ),
-                                ),
-                                imageUrl: path,
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                          children: complaint.imageUrls.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final path = entry.value;
+                            return GestureDetector(
+                              onTap: () => _showImageViewer(complaint.imageUrls, index),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CachedNetworkImage(
+                                  httpHeaders: ComplaintService.instance
+                                      .getAuthHeaders(),
+                                  cacheManager: CacheManager(
+                                    Config(
+                                      'smart_nagarpalika',
+                                      stalePeriod: const Duration(days: 1),
                                     ),
                                   ),
-                                ),
-                                errorWidget: (context, url, error) {
-                                  _logger.error(
-                                    'Error loading image in complaint details',
-                                    {
-                                      'url': url,
-                                      'error': error,
-                                      'complaint_id': complaint.id,
-                                    },
-                                  );
-                                  return Container(
+                                  imageUrl: path,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
                                     width: 60,
                                     height: 60,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
-                                      color: Colors.red.shade100,
+                                      color: Colors.grey.shade200,
                                     ),
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      color: Colors.red,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     ),
-                                  );
-                                },
+                                  ),
+                                  errorWidget: (context, url, error) {
+                                    _logger.error(
+                                      'Error loading image in complaint details',
+                                      {
+                                        'url': url,
+                                        'error': error,
+                                        'complaint_id': complaint.id,
+                                      },
+                                    );
+                                    return Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        color: Colors.red.shade100,
+                                      ),
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        color: Colors.red,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             );
                           }).toList(),
@@ -561,6 +673,87 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                           style: TextStyle(color: Colors.grey),
                         ),
                       ),
+
+                    // Show employee images for resolved complaints
+                    if (_normalizeStatus(status) == 'resolved' && 
+                        complaint.employeeImages != null && 
+                        complaint.employeeImages!.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Employee Work Images:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: complaint.employeeImages!.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final path = entry.value;
+                            return GestureDetector(
+                              onTap: () => _showImageViewer(complaint.employeeImages!, index),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CachedNetworkImage(
+                                  httpHeaders: ComplaintService.instance
+                                      .getAuthHeaders(),
+                                  cacheManager: CacheManager(
+                                    Config(
+                                      'smart_nagarpalika',
+                                      stalePeriod: const Duration(days: 1),
+                                    ),
+                                  ),
+                                  imageUrl: path,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.green.shade100,
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) {
+                                    return Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        color: Colors.red.shade100,
+                                      ),
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        color: Colors.red,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 16),
                     // Action buttons based on status
                     if (status?.toLowerCase() == 'pending')
@@ -681,8 +874,8 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
 
   String _formatDate(DateTime dateTime) {
     return '${dateTime.day.toString().padLeft(2, '0')}/'
-        '${dateTime.month.toString().padLeft(2, '0')}/'
-        '${dateTime.year}';
+        '${dateTime.month.toString().padLeft(2, '0')}'
+        '/${dateTime.year}';
   }
 
   Widget _buildDetailRow(String label, String value) {
@@ -766,7 +959,7 @@ Widget _buildImagePreview(List<String> attachments) {
       headers: {'Authorization': basicAuth},
       errorBuilder: (context, error, stackTrace) {
         _logger.error('Error loading image in preview', {
-          'url': imageUrl,
+          'url': imageUrl.toString().trim(),
           'error': error,
         });
         return Container(

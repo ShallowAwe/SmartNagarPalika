@@ -16,7 +16,7 @@ class ComplaintService {
   ComplaintService._();
 
   final String _baseUrl =
-      'http://192.168.1.35:8080/complaints/register-with-images';
+      'http://192.168.1.34:8080/complaints/register-with-images';
   final String _username = 'user1';
   final String _password = 'user1';
   final _logger = LoggerService.instance;
@@ -264,7 +264,7 @@ class ComplaintService {
 
     // Use 10.0.2.2 if running on Android emulator
     final String _getComplaintsURL =
-        'http://192.168.1.35:8080/citizen/complaints/by-username?username=$username';
+        'http://192.168.1.34:8080/citizen/complaints/by-username?username=$username';
     final url = Uri.parse(_getComplaintsURL);
 
     try {
