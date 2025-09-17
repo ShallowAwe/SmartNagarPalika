@@ -1,31 +1,66 @@
+// places_model.dart
+
 class PlaceModel {
-  final String placeId;
+  final int id;
   final String name;
-  final double lat;
-  final double lng;
-  final String? address;
-  final List<String>? types;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final String categoryName;
+  final List<String> types;
 
   PlaceModel({
-    required this.placeId,
+    required this.id,
     required this.name,
-    required this.lat,
-    required this.lng,
-    this.address,
-    this.types,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    required this.categoryName,
+    required this.types,
   });
 
   factory PlaceModel.fromJson(Map<String, dynamic> json) {
-    final location = json['geometry']['location'];
+    // Defensive parsing for lat/lng
+    final double lat = (json['latitude'] as num).toDouble();
+    final double lng = (json['longitude'] as num).toDouble();
+
+    if (lat.abs() > 90 || lng.abs() > 180) {
+      throw ArgumentError(
+        "Invalid coordinates for PlaceModel: lat=$lat, lng=$lng",
+      );
+    }
+
     return PlaceModel(
-      placeId: json['place_id'],
+      id: json['id'],
       name: json['name'],
-      lat: location['lat'],
-      lng: location['lng'],
-      address: json['vicinity'] ?? json['formatted_address'],
-      types: json['types'] != null
-          ? List<String>.from(json['types'])
-          : null,
+      address: json['address'],
+      latitude: lat,
+      longitude: lng,
+      categoryName: json['categoryName'],
+      types: [json['categoryName'].toLowerCase()],
+    );
+  }
+}
+
+class CategoryModel {
+  final int id;
+  final String name;
+  final String imageUrl;
+  final List<String> locations;
+
+  CategoryModel({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    required this.locations,
+  });
+
+  factory CategoryModel.fromJson(Map<String, dynamic> json) {
+    return CategoryModel(
+      id: json['id'],
+      name: json['name'],
+      imageUrl: json['imageUrl'],
+      locations: List<String>.from(json['locations']),
     );
   }
 }

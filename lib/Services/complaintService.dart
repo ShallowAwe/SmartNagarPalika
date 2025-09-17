@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'package:smart_nagarpalika/Model/complaint_response_model.dart';
 
 import 'package:smart_nagarpalika/Model/coplaintModel.dart';
+import 'package:smart_nagarpalika/config/app_config.dart';
 import 'logger_service.dart';
 // import 'package:cached_network_image/cached_network_image.dart';
 
@@ -15,8 +16,8 @@ class ComplaintService {
   static ComplaintService get instance => _instance ??= ComplaintService._();
   ComplaintService._();
 
-  final String _baseUrl =
-      'http://192.168.1.34:8080/complaints/register-with-images';
+   final String _baseUrl =
+      "${AppConfig.baseUrl}/complaints/register-with-images";
   final String _username = 'user1';
   final String _password = 'user1';
   final _logger = LoggerService.instance;

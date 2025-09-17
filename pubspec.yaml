@@ -49,6 +49,8 @@ dependencies:
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
   http: ^1.2.0
+  web_socket_channel: ^3.0.3
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +80,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - .env
     - assets/bank.png
     - assets/billBoard.png
     - assets/Certificates.png

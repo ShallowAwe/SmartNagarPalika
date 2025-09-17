@@ -1,44 +1,84 @@
-// import 'dart:convert';
+import 'dart:math';
+import 'dart:convert';
 import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-// import 'package:http/http.dart' as http;
-import 'package:smart_nagarpalika/Data/dummyPlace.dart';
+import 'package:http/http.dart' as http;
 import 'package:smart_nagarpalika/Model/placesModel.dart';
+import 'package:smart_nagarpalika/provider/auth_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class NearMeScreen extends StatefulWidget {
+class NearMeScreen extends ConsumerStatefulWidget {
   const NearMeScreen({super.key});
 
   @override
-  State<NearMeScreen> createState() => _NearMeScreenState();
+  ConsumerState<NearMeScreen> createState() => _NearMeScreenState();
 }
 
-class _NearMeScreenState extends State<NearMeScreen> {
+class _NearMeScreenState extends ConsumerState<NearMeScreen> {
+  late final String username;
+  late final String password;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Use addPostFrameCallback to ensure widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authState = ref.read(authProvider);
+
+      if (authState != null) {
+        username = authState.username;
+        password = authState.password;
+
+        _checkPermissionAndInit();
+        _fetchCategories();
+      } else {
+        debugPrint("Auth state is null! Cannot fetch data.");
+        // You might want to redirect to login or show an error
+      }
+    });
+  }
+
   GoogleMapController? _mapController;
   LatLng? _currentLatLng;
   final List<PlaceModel> _places = [];
   final Set<Marker> _markers = {};
   bool _isFetching = false;
+  List<CategoryModel> _categories = [];
 
-  final List<String> _allFilters = [
-    'hospital',
-    'school',
-    'police',
-    'park',
-    'gas_station',
-    'fire_station',
-    'bank',
-    'public_toilet',
-  ];
+  final String _placesApiUrl = 'http://192.168.1.34:8080/citizen/locations';
+  final String _categoriesApiUrl =
+      'http://192.168.1.34:8080/citizen/categories';
 
   final List<String> _selectedFilters = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _checkPermissionAndInit();
+  Future<void> _fetchCategories() async {
+    try {
+      final response = await http.get(
+        Uri.parse(_categoriesApiUrl),
+        headers: {
+          "Authorization":
+              "Basic ${base64Encode(utf8.encode('$username:$password'))}",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _categories = data
+              .map((json) => CategoryModel.fromJson(json))
+              .toList();
+        });
+      } else {
+        throw Exception('Failed to load categories');
+      }
+    } catch (e) {
+      debugPrint("Error fetching categories: $e");
+      // You might want to show an error message to the user
+    }
   }
 
   Future<void> _checkPermissionAndInit() async {
@@ -54,8 +94,6 @@ class _NearMeScreenState extends State<NearMeScreen> {
     }
     _initLocation();
   }
-
-  // to redireect the user to the maps
 
   void _openInMaps(double lat, double lng, String label) async {
     final encodedLabel = Uri.encodeComponent(label);
@@ -82,177 +120,142 @@ class _NearMeScreenState extends State<NearMeScreen> {
         _currentLatLng = latLng;
       });
 
-      // _fetchNearbyPlaces(latLng.latitude, latLng.longitude, _selectedFilters.isEmpty ? _allFilters : _selectedFilters);
+      // _fetchNearbyPlaces();
     } catch (e) {
       debugPrint("Error getting location: $e");
     }
   }
 
-  Future<void> _fetchNearbyPlaces(
-    double lat,
-    double lng,
-    List<String> types,
-  ) async {
-    _isFetching = true;
-    _places.clear();
-    _markers.clear();
-    setState(() {});
+  Future<void> _fetchNearbyPlaces() async {
+    if (_currentLatLng == null) return;
 
-    // Use dummyPlaces from imported dummy_places.dart
-    final filtered = dummyPlaces.where((place) {
-      return types.isEmpty ||
-          (place.types?.any((t) => types.contains(t)) ?? false);
-    }).toList();
-
-    for (var place in filtered) {
-      _places.add(place);
-      _markers.add(
-        Marker(
-          markerId: MarkerId(place.placeId),
-          position: LatLng(place.lat, place.lng),
-          infoWindow: InfoWindow(
-            title: place.name,
-            snippet: place.address,
-            onTap: () async {
-              OkCancelResult result = await showOkCancelAlertDialog(
-                context: context,
-                title: "Open in Maps",
-                message: "Do you want to open in maps?",
-                okLabel: "Yes",
-                cancelLabel: "No",
-              );
-
-              if (result == OkCancelResult.ok) {
-                _openInMaps(place.lat, place.lng, place.name);
-              }
-            },
-          ),
-          icon: await _getCustomMarkerIcon(place.types?.first ?? 'default'),
-        ),
-      );
-    }
-
-    _isFetching = false;
     setState(() {
-      print("Current location $LatLng");
+      _isFetching = true;
+      _places.clear();
+      _markers.clear();
     });
+
+    try {
+      // Fetch all places from your API
+      final response = await http.get(
+        Uri.parse(_placesApiUrl),
+        headers: {
+          "Authorization":
+              "Basic ${base64Encode(utf8.encode('$username:$password'))}",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final allPlaces = data
+            .map((json) => PlaceModel.fromJson(json))
+            .toList();
+
+        // Filter places based on selected categories
+        final filteredPlaces = _selectedFilters.isEmpty
+            ? allPlaces
+            : allPlaces
+                  .where(
+                    (place) => _selectedFilters.contains(
+                      place.categoryName.toLowerCase(),
+                    ),
+                  )
+                  .toList();
+
+        // Calculate distance and sort by proximity to current location
+        filteredPlaces.sort((a, b) {
+          final distanceA = _calculateDistance(
+            _currentLatLng!.latitude,
+            _currentLatLng!.longitude,
+            a.latitude,
+            a.longitude,
+          );
+          final distanceB = _calculateDistance(
+            _currentLatLng!.latitude,
+            _currentLatLng!.longitude,
+            b.latitude,
+            b.longitude,
+          );
+          return distanceA.compareTo(distanceB);
+        });
+
+        for (var place in filteredPlaces) {
+          _places.add(place);
+          _markers.add(
+            Marker(
+              markerId: MarkerId(place.name),
+              position: LatLng(place.latitude, place.longitude),
+              infoWindow: InfoWindow(
+                title: place.name,
+                snippet: place.address,
+                onTap: () async {
+                  OkCancelResult result = await showOkCancelAlertDialog(
+                    context: context,
+                    title: "Open in Maps",
+                    message: "Do you want to open in maps?",
+                    okLabel: "Yes",
+                    cancelLabel: "No",
+                  );
+
+                  if (result == OkCancelResult.ok) {
+                    _openInMaps(place.latitude, place.longitude, place.name);
+                  }
+                },
+              ),
+              icon: await _getCustomMarkerIcon(
+                place.categoryName.toLowerCase(),
+              ),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to load places');
+      }
+    } catch (e) {
+      debugPrint("Error fetching places: $e");
+      // You might want to show an error message to the user
+    } finally {
+      setState(() {
+        _isFetching = false;
+      });
+    }
   }
 
-  // Future<void> _fetchNearbyPlaces(double lat, double lng, List<String> types) async {
-  //   if (_isFetching) return;
-  //   debugPrint("Fetching places for filters: $types");
+  // Calculate distance between two coordinates in kilometers using the Haversine formula
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
+    const double earthRadius = 6371; // Earth's radius in kilometers
 
-  //   _isFetching = true;
-  //   _places.clear();
-  //   _markers.clear();
-  //   final Set<String> addedPlaceIds = {};
-  //   setState(() {}); // To show loader/clear map
+    // Convert degrees to radians
+    double toRadians(double degrees) => degrees * (pi / 180.0);
 
-  //   final Map<String, String> placeTypeMap = {
-  //     'Hospital': 'hospital',
-  //     'school': 'school',
-  //     'police': 'police',
-  //     'park': 'park',
-  //     'gas_station': 'gas_station',
-  //     'fire_station': 'fire_station',
-  //     'bank': 'bank',
-  //     'public_toilet': 'toilet', // Google uses 'toilet' for public toilets
-  //   };
+    double dLat = toRadians(lat2 - lat1);
+    double dLon = toRadians(lon2 - lon1);
 
-  //   for (final type in types) {
-  //     final normalized = placeTypeMap[type.trim().toLowerCase()] ?? type.trim().toLowerCase();
+    double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(toRadians(lat1)) *
+            cos(toRadians(lat2)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
 
-  //     final url = Uri.parse(
-  //       'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-  //       '?location=$lat,$lng'
-  //       '&radius=1000'
-  //       '&type=$normalized'
-  //       '&key=AIzaSyDGZ_4Yiy7wqyYq-f-wyhZ4Ryxw1CgkncM'
-  //     );
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
-  //     debugPrint("Fetching for type: $type -> $normalized");
-  //     debugPrint("Request URL: ${url.toString().replaceAll(RegExp(r'key=.*'), 'key=***')}"); // Hide API key in logs
+    return earthRadius * c;
+  }
 
-  //     try {
-  //       final res = await http.get(url);
-  //       debugPrint("Response status for $type: ${res.statusCode}");
-
-  //       if (res.statusCode == 200) {
-  //         final data = jsonDecode(res.body);
-  //         final status = data['status'];
-
-  //         debugPrint("API Status for $type: $status");
-
-  //         if (status == 'OK') {
-  //           final results = data['results'] as List;
-  //           debugPrint("Found ${results.length} places for $type");
-
-  //           for (var item in results) {
-  //             try {
-  //               final place = PlaceModel.fromJson(item);
-  //               if (!addedPlaceIds.contains(place.placeId)) {
-  //                 _places.add(place);
-  //                 addedPlaceIds.add(place.placeId);
-  //                 _markers.add(
-  //                   Marker(
-  //                     markerId: MarkerId(place.placeId),
-  //                     position: LatLng(place.lat, place.lng),
-  //                     infoWindow: InfoWindow(title: place.name, snippet: place.address),
-  //                     icon: await _getCustomMarkerIcon(type),
-  //                   ),
-  //                 );
-  //               }
-  //             } catch (e) {
-  //               debugPrint("Error parsing place data: $e");
-  //             }
-  //           }
-  //         } else if (status == 'ZERO_RESULTS') {
-  //           debugPrint("No results found for $type");
-  //         } else {
-  //           debugPrint("API Error for $type: $status");
-  //           if (data['error_message'] != null) {
-  //             debugPrint("Error message: ${data['error_message']}");
-  //           }
-  //         }
-  //       } else {
-  //         debugPrint("HTTP Error for $type: ${res.statusCode}");
-  //         debugPrint("Response body: ${res.body}");
-  //       }
-  //     } catch (e) {
-  //       debugPrint('Exception while fetching $type: $e');
-  //     }
-  //   }
-
-  //   _isFetching = false;
-  //   setState(() {});
-  //   debugPrint("Finished fetching. Total places found: ${_places.length}");
-  // }
-
-  Future<BitmapDescriptor> _getCustomMarkerIcon(String type) async {
-    // You can customize marker icons based on type
-    switch (type) {
+  Future<BitmapDescriptor> _getCustomMarkerIcon(String category) async {
+    // Map your category names to marker colors
+    switch (category) {
       case 'hospital':
         return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-      case 'school':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-      case 'police':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
-      case 'park':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
-      case 'gas_station':
-        return BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueYellow,
-        );
-      case 'fire_station':
-        return BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueOrange,
-        );
       case 'bank':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan);
-      case 'public_toilet':
-        return BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueMagenta,
-        );
+        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+      // Add more cases for your categories
       default:
         return BitmapDescriptor.defaultMarker;
     }
@@ -305,14 +308,20 @@ class _NearMeScreenState extends State<NearMeScreen> {
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                       childAspectRatio: 2.5,
-                      children: _allFilters.map((type) {
-                        final isSelected = tempSelected.contains(type);
+                      children: _categories.map((category) {
+                        final isSelected = tempSelected.contains(
+                          category.name.toLowerCase(),
+                        );
                         return GestureDetector(
                           onTap: () {
                             setModalState(() {
                               isSelected
-                                  ? tempSelected.remove(type)
-                                  : tempSelected.add(type);
+                                  ? tempSelected.remove(
+                                      category.name.toLowerCase(),
+                                    )
+                                  : tempSelected.add(
+                                      category.name.toLowerCase(),
+                                    );
                             });
                           },
                           child: Container(
@@ -332,11 +341,26 @@ class _NearMeScreenState extends State<NearMeScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _getIconForType(type),
+                                // You can display category image here if available
+                                Image.network(
+                                  category.imageUrl,
+                                  headers: {
+                                    "Authorization":
+                                        "Basic ${base64Encode(utf8.encode('$username:$password'))}",
+                                  },
+                                  width: 24,
+                                  height: 24,
+                                  // errorBuilder: (context, error, stackTrace) {
+                                  //   return _getDefaultIcon(
+                                  //     category.name.toLowerCase(),
+                                  //   );
+                                  // },
+                                ),
+                                // _getDefaultIcon(category.name.toLowerCase()),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    _getLabelForType(type),
+                                    category.name,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: isSelected
@@ -364,7 +388,14 @@ class _NearMeScreenState extends State<NearMeScreen> {
                               setModalState(() {
                                 tempSelected.clear();
                               });
+                              // Optional: apply immediately and refresh places
+                              setState(() {
+                                _selectedFilters.clear();
+                                _fetchNearbyPlaces(); // refresh based on empty filter
+                              });
+                              Navigator.pop(context); // close bottom sheet
                             },
+
                             child: const Text("Clear All"),
                           ),
                         ),
@@ -377,19 +408,7 @@ class _NearMeScreenState extends State<NearMeScreen> {
                                 _selectedFilters.clear();
                                 _selectedFilters.addAll(tempSelected);
                               });
-
-                              if (_currentLatLng != null) {
-                                debugPrint(
-                                  "Applying filters: $_selectedFilters",
-                                );
-                                _fetchNearbyPlaces(
-                                  _currentLatLng!.latitude,
-                                  _currentLatLng!.longitude,
-                                  _selectedFilters.isEmpty
-                                      ? _allFilters
-                                      : _selectedFilters,
-                                );
-                              }
+                              _fetchNearbyPlaces();
                             },
                             child: const Text("Apply Filter"),
                           ),
@@ -406,104 +425,27 @@ class _NearMeScreenState extends State<NearMeScreen> {
     );
   }
 
-  String _getLabelForType(String type) {
-    const labelMap = {
-      'hospital': 'Hospital',
-      'school': 'School',
-      'police': 'Police Station',
-      'fire_station': 'Fire Station',
-      'bank': 'Bank',
-      'park': 'Park',
-      'gas_station': 'Gas Station',
-      'public_toilet': 'Public Toilet',
-    };
+  // Widget _getDefaultIcon(String category) {
+  //   IconData iconData;
+  //   Color color;
 
-    return labelMap[type] ?? _capitalizeWords(type);
-  }
+  //   switch (category) {
+  //     case 'hospital':
+  //       iconData = Icons.local_hospital;
+  //       color = Colors.red;
+  //       break;
+  //     case 'bank':
+  //       iconData = Icons.account_balance;
+  //       color = Colors.teal;
+  //       break;
+  //     // Add more cases for your categories
+  //     default:
+  //       iconData = Icons.location_on;
+  //       color = Colors.grey;
+  //   }
 
-  Widget _getIconForType(String type) {
-    const iconMap = {
-      'bank': 'lib/assets/bank.png',
-      'school': 'lib/assets/School.png',
-      'police': 'lib/assets/policeStation.png',
-      'park': 'lib/assets/park.png',
-      'gas_station': 'lib/assets/fuelStation.png',
-      'hospital': 'lib/assets/hospital.png',
-      'fire_station': 'lib/assets/fireStation.png',
-      'public_toilet': 'lib/assets/restroom.png',
-    };
-
-    final path = iconMap[type];
-
-    if (path != null) {
-      return Image.asset(
-        path,
-        width: 24,
-        height: 24,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) {
-          return _getDefaultIcon(type);
-        },
-      );
-    }
-
-    return _getDefaultIcon(type);
-  }
-
-  Widget _getDefaultIcon(String type) {
-    IconData iconData;
-    Color color;
-
-    switch (type) {
-      case 'hospital':
-        iconData = Icons.local_hospital;
-        color = Colors.red;
-        break;
-      case 'school':
-        iconData = Icons.school;
-        color = Colors.blue;
-        break;
-      case 'police':
-        iconData = Icons.local_police;
-        color = Colors.indigo;
-        break;
-      case 'park':
-        iconData = Icons.park;
-        color = Colors.green;
-        break;
-      case 'gas_station':
-        iconData = Icons.local_gas_station;
-        color = Colors.orange;
-        break;
-      case 'fire_station':
-        iconData = Icons.fire_truck;
-        color = Colors.deepOrange;
-        break;
-      case 'bank':
-        iconData = Icons.account_balance;
-        color = Colors.teal;
-        break;
-      case 'public_toilet':
-        iconData = Icons.wc;
-        color = Colors.purple;
-        break;
-      default:
-        iconData = Icons.location_on;
-        color = Colors.grey;
-    }
-
-    return Icon(iconData, size: 24, color: color);
-  }
-
-  String _capitalizeWords(String input) {
-    return input
-        .split('_')
-        .map((word) {
-          if (word.isEmpty) return '';
-          return word[0].toUpperCase() + word.substring(1);
-        })
-        .join(' ');
-  }
+  //   return Icon(iconData, size: 24, color: color);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -539,7 +481,6 @@ class _NearMeScreenState extends State<NearMeScreen> {
                   mapToolbarEnabled: false,
                 ),
 
-                // Loading overlay
                 if (_isFetching)
                   Container(
                     color: Colors.black26,
@@ -562,7 +503,6 @@ class _NearMeScreenState extends State<NearMeScreen> {
                     ),
                   ),
 
-                // Filter button
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
@@ -570,7 +510,6 @@ class _NearMeScreenState extends State<NearMeScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Results count
                         if (_places.isNotEmpty && !_isFetching)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -592,7 +531,6 @@ class _NearMeScreenState extends State<NearMeScreen> {
 
                         const SizedBox(height: 8),
 
-                        // Filter button
                         GestureDetector(
                           onTap: _showFilterBottomSheet,
                           child: Container(
@@ -645,21 +583,3 @@ class _NearMeScreenState extends State<NearMeScreen> {
     );
   }
 }
-
-// class _popUpToNavigate extends StatelessWidget {
-//   const _popUpToNavigate({
-//     super.key,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       child: Column(
-//         children: [
-         
-//         ],
-//       ),
-//     );
-//   }
-// }
-

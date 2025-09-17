@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_nagarpalika/Data/gridData.dart';
+import 'package:smart_nagarpalika/Screens/notification_screen.dart';
 import 'package:smart_nagarpalika/Services/servicesGridSection.dart';
 import 'package:smart_nagarpalika/utils/bottomNavBar.dart';
 import 'package:smart_nagarpalika/utils/topContainer.dart';
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override 
   Widget build(BuildContext context) {
     return Scaffold(
+      
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,9 +27,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const TopContainer(),
             
             const SizedBox(height: 16), // Consistent spacing
-            
+              TextButton(onPressed: (){
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => NotificationPage(),)
+                );
+              }, child: Text('View all')),
             // News Card Section
-            const Horizantalnewscard(),
+            const HorizontalNewscard(),
             
             const SizedBox(height: 20), // Slightly more space before services
             

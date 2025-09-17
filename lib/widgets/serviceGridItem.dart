@@ -16,64 +16,71 @@ class ServiceGridItem extends StatelessWidget {
     this.screen,
   });
 
+  void _handleTap(BuildContext context) {
+    if (screen != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => screen!),
+      );
+    } else if (url != null && url!.isNotEmpty && Uri.tryParse(url!) != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WebViewScreen(url: url!),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("⚠️ No action assigned")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        if (screen != null) {
-          // Navigate to Flutter screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => screen!),
-          );
-        } else if (url != null && url!.isNotEmpty) {
-          // Navigate to WebView
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WebViewScreen(
-                url: url!,
-                // title: label,
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      elevation: 10,
+      shadowColor: const Color.fromARGB(161, 0, 0, 0),
+      child: InkWell(
+        splashColor: const Color.fromARGB(71, 0, 0, 0),
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _handleTap(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              /// Service icon
+              Expanded(
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                  width: 40,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.broken_image,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
               ),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("No action assigned")));
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12.withAlpha(125),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Image.asset(imagePath, fit: BoxFit.contain, width: 40),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
+              const SizedBox(height: 8),
+
+              /// Service label
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

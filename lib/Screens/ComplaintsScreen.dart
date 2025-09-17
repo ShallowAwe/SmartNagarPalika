@@ -839,28 +839,28 @@ class _ComplaintsscreenState extends State<Complaintsscreen> {
                     else
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.info, size: 16),
-                          label: const Text('Track Progress'),
-                          onPressed: () {
-                            _logger.info(
-                              'User tapped Track Progress button for complaint ID: ${complaint.id}',
-                            );
-                            Navigator.pop(context);
-                            // Add tracking functionality here
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Tracking functionality coming soon!',
-                                ),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
+                        // child: ElevatedButton.icon(
+                        //   icon: const Icon(Icons.info, size: 16),
+                        //   label: const Text('Track Progress'),
+                        //   onPressed: () {
+                        //     _logger.info(
+                        //       'User tapped Track Progress button for complaint ID: ${complaint.id}',
+                        //     );
+                        //     Navigator.pop(context);
+                        //     // Add tracking functionality here
+                        //     ScaffoldMessenger.of(context).showSnackBar(
+                        //       const SnackBar(
+                        //         content: Text(
+                        //           'Tracking functionality coming soon!',
+                        //         ),
+                        //       ),
+                        //     );
+                        //   },
+                        //   style: ElevatedButton.styleFrom(
+                        //     backgroundColor: Colors.blue,
+                        //     foregroundColor: Colors.white,
+                        //   ),
+                        // ),
                       ),
                   ],
                 ),

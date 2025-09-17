@@ -2,19 +2,19 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:smart_nagarpalika/Services/logger_service.dart';
+import '../config/app_config.dart';
 
 class AuthService {
-  // Configure based on your setup:
-  // For Android Emulator: "http://10.0.2.2:8080"
-  // For Physical Device: "http://192.168.1.3:8080" (replace with your computer's IP)
-  final String _baseUrl = "http://192.168.1.34:8080"; // Change this based on your device
+  // Use base URL from AppConfig (which reads from .env)
+  String get _baseUrl => AppConfig.citizenBaseUrl.replaceAll('/citizen', ''); // Remove /citizen for auth endpoint
+  String get _authUrl => '$_baseUrl/auth/login';
   
   Future<LoginResponse?> login(String username, String password) async {
     try {
-      LoggerService.instance.info('🔗 Attempting to connect to: $_baseUrl/auth/login');
+      LoggerService.instance.info('🔗 Attempting to connect to: $_authUrl');
       LoggerService.instance.debug('📱 Username: $username');
       
-      final uri = Uri.parse("$_baseUrl/auth/login");
+      final uri = Uri.parse(_authUrl);
       LoggerService.instance.debug('🌐 Full URI: $uri');
       
       final response = await http.post(
@@ -28,21 +28,27 @@ class AuthService {
           "password": password
         }),
       ).timeout(
-        Duration(seconds: 10), // 10 second timeout
+        Duration(seconds: AppConfig.timeoutSeconds), // Use timeout from config
         onTimeout: () {
-          throw TimeoutException('Connection timed out after 10 seconds');
+          throw TimeoutException('Connection timed out after ${AppConfig.timeoutSeconds} seconds');
         },
       );
 
       LoggerService.instance.info('📊 Response status: ${response.statusCode}');
-      LoggerService.instance.debug('📄 Response body: ${response.body}');
+      
+      if (AppConfig.isDebugMode) {
+        LoggerService.instance.debug('📄 Response body: ${response.body}');
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        LoggerService.instance.info('✅ Login successful for user: $username');
         return LoginResponse.fromJson(data);
       } else {
         LoggerService.instance.warning('❌ Login failed with status: ${response.statusCode}');
-        LoggerService.instance.debug('❌ Response body: ${response.body}');
+        if (AppConfig.isDebugMode) {
+          LoggerService.instance.debug('❌ Response body: ${response.body}');
+        }
         return null;
       }
       
@@ -52,8 +58,8 @@ class AuthService {
     } on SocketException catch (e) {
       LoggerService.instance.error('🔌 Socket error: $e');
       LoggerService.instance.info('💡 This usually means:');
-      LoggerService.instance.info('   - Server is not running');
-      LoggerService.instance.info('   - Wrong IP address');
+      LoggerService.instance.info('   - Server is not running on ${_baseUrl}');
+      LoggerService.instance.info('   - Wrong IP address in .env file');
       LoggerService.instance.info('   - Firewall blocking connection');
       LoggerService.instance.info('   - Network configuration issue');
       rethrow;
@@ -72,17 +78,69 @@ class AuthService {
   // Test connectivity method
   Future<bool> testConnectivity() async {
     try {
+      LoggerService.instance.info('🧪 Testing connectivity to: $_baseUrl');
+      
       final response = await http.get(
         Uri.parse(_baseUrl),
         headers: {"Accept": "application/json"},
-      ).timeout(Duration(seconds: 5));
+      ).timeout(Duration(seconds: AppConfig.timeoutSeconds));
       
       LoggerService.instance.info('🧪 Connectivity test result: ${response.statusCode}');
-      return true;
+      return response.statusCode < 500; // Accept any response that's not a server error
     } catch (e) {
       LoggerService.instance.error('🧪 Connectivity test failed: $e');
       return false;
     }
+  }
+
+  // Method to test specific endpoints
+  Future<Map<String, bool>> testAllEndpoints() async {
+    final results = <String, bool>{};
+    
+    // Test base server
+    results['server'] = await testConnectivity();
+    
+    // Test auth endpoint specifically
+    try {
+      final response = await http.post(
+        Uri.parse(_authUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"test": "connectivity"}),
+      ).timeout(Duration(seconds: 5));
+      
+      results['auth'] = response.statusCode != 404; // Endpoint exists
+    } catch (e) {
+      results['auth'] = false;
+    }
+    
+    // Test citizen endpoint
+    try {
+      final citizenUrl = AppConfig.citizenBaseUrl;
+      final response = await http.get(
+        Uri.parse(citizenUrl),
+        headers: {"Accept": "application/json"},
+      ).timeout(Duration(seconds: 5));
+      
+      results['citizen'] = response.statusCode < 500;
+    } catch (e) {
+      results['citizen'] = false;
+    }
+    
+    // Test employee endpoint  
+    try {
+      final employeeUrl = AppConfig.employeeBaseUrl;
+      final response = await http.get(
+        Uri.parse(employeeUrl),
+        headers: {"Accept": "application/json"},
+      ).timeout(Duration(seconds: 5));
+      
+      results['employee'] = response.statusCode < 500;
+    } catch (e) {
+      results['employee'] = false;
+    }
+    
+    LoggerService.instance.info('🧪 Endpoint test results: $results');
+    return results;
   }
 }
 
@@ -107,12 +165,17 @@ class LoginResponse {
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      username: json["username"],
-      role: json["role"],
+      username: json["username"] ?? '',
+      role: json["role"] ?? '',
       employeeDetails: json["employeeDetails"] != null
           ? EmployeeDetails.fromJson(json["employeeDetails"])
           : null,
     );
+  }
+
+  @override
+  String toString() {
+    return 'LoginResponse(username: $username, role: $role, hasEmployeeDetails: ${employeeDetails != null})';
   }
 }
 
@@ -133,11 +196,18 @@ class EmployeeDetails {
 
   factory EmployeeDetails.fromJson(Map<String, dynamic> json) {
     return EmployeeDetails(
-      firstName: json["firstName"],
-      lastName: json["lastName"],
-      phoneNumber: json["phoneNumber"],
-      departmentName: json["departmentName"],
-      wardNames: List<String>.from(json["wardNames"]),
+      firstName: json["firstName"] ?? '',
+      lastName: json["lastName"] ?? '',
+      phoneNumber: json["phoneNumber"] ?? '',
+      departmentName: json["departmentName"] ?? '',
+      wardNames: json["wardNames"] != null 
+          ? List<String>.from(json["wardNames"]) 
+          : [],
     );
+  }
+
+  @override
+  String toString() {
+    return 'EmployeeDetails(firstName: $firstName, lastName: $lastName, department: $departmentName, wards: ${wardNames.length})';
   }
 }

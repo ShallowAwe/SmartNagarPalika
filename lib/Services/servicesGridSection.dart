@@ -8,50 +8,59 @@ class ServiceGridSection extends StatelessWidget {
   const ServiceGridSection({
     super.key,
     required this.title,
-    required this.services,
+    this.services = const [],
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0), // Changed from margin to padding
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Prevents extra space
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// Title with minimal spacing
+          /// Section title
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
               color: Colors.black87,
             ),
           ),
-          
-          const SizedBox(height: 12), // Reduced from your padding approach
-          
-          /// Grid Section
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: services.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 8, // Reduced spacing
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.9, // Slightly more compact
-            ),
-            itemBuilder: (context, index) {
-              final service = services[index];
-              
-            return  ServiceGridItem(
-  imagePath: service['imagePath'] ?? '',
-  label: service['label'] ?? '',
-  url: service['url'],
-  screen: service['screen'], 
-);
 
+          const SizedBox(height: 12),
+
+          /// Responsive Grid
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Adjust number of columns dynamically
+              final crossAxisCount = (constraints.maxWidth ~/ 90).clamp(2, 6);
+
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: GridView.builder(
+                  key: ValueKey(services.length), // triggers animation when data changes
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: services.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.9,
+                  ),
+                  itemBuilder: (context, index) {
+                    final service = services[index];
+                    return ServiceGridItem(
+                      imagePath: service['imagePath'] ?? '',
+                      label: service['label'] ?? '',
+                      url: service['url'],
+                      screen: service['screen'],
+                    );
+                  },
+                ),
+              );
             },
           ),
         ],

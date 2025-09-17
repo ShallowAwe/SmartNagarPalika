@@ -4,13 +4,14 @@ class Alertmodel {
   final String type;
   final String? imageUrl; // single string
   final String title;
-
+  final String? createdAt;
   Alertmodel({
     required this.id,
     required this.title,
     required this.description,
     this.imageUrl,
     required this.type,
+    this.createdAt,
   });
 
   factory Alertmodel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +21,7 @@ class Alertmodel {
       imageUrl: json['imageUrl'],
       description: json['description'],
       type: json['type'],
+      createdAt: json['createdAt']
     );
   }
 }

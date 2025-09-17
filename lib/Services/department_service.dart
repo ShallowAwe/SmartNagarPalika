@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:smart_nagarpalika/Model/departmentModel.dart';
+import 'package:smart_nagarpalika/config/app_config.dart';
 import 'logger_service.dart';
 
 class DepartmentService {
@@ -10,7 +11,7 @@ class DepartmentService {
   DepartmentService._();
 
   final String _baseUrl =
-      'http://192.168.1.34:8080/citizen/get_departments_user';
+      '${AppConfig.citizenBaseUrl}}/get_departments_user';
   final String username = 'user1';
   final String password = 'user1';
   final _logger = LoggerService.instance;

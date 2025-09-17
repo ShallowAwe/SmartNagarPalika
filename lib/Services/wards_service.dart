@@ -3,10 +3,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import 'package:smart_nagarpalika/Model/ward_model.dart';
+import 'package:smart_nagarpalika/config/app_config.dart';
 
 class WardsService {
   final Logger _logger = Logger();
-  final String _getWardsURL = 'http://192.168.1.41:8080/citizen/get_wards';
+  final String _getWardsURL = '${AppConfig.citizenBaseUrl}/get_wards';
   final String _username = 'user1';
   final String _password = 'user1';
 

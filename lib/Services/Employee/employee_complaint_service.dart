@@ -4,10 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as path;
 import 'package:smart_nagarpalika/Model/complaint_response_model.dart';
+import 'package:smart_nagarpalika/config/app_config.dart';
 
 class EmployeeComplaintService {
   // final String _baseUrl = "http://192.168.1.41:8080/employee";
-  final String _baseUrl = "http://192.168.1.34:8080/employee";
+  final String _baseUrl = AppConfig.employeeBaseUrl;
   final String _username = "user1"; // replace with your username
   final String _password = "user1"; // replace with your password
   final empName = 'emp3';
