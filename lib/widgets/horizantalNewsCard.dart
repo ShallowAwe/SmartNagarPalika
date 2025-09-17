@@ -12,55 +12,31 @@ class HorizontalNewscard extends ConsumerStatefulWidget {
   ConsumerState<HorizontalNewscard> createState() => _HorizontalNewscardState();
 }
 
-class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
-    with TickerProviderStateMixin {
+class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard> {
   final ScrollController _scrollController = ScrollController();
   int _focusedIndex = 0;
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authState = ref.read(authProvider);
-      if (authState != null) {
-        final String username = authState.username;
-        final String password = authState.password;
-      }
-    });
   }
 
   void _onScroll() {
     final position = _scrollController.offset;
-    const cardWidth = 252.0; // 240 (card width) + 12 (spacing)
+    const cardWidth = 232.0; // 220 (card width) + 12 (spacing)
     final index = (position / cardWidth).round();
 
     if (index != _focusedIndex && index >= 0) {
       setState(() {
         _focusedIndex = index;
       });
-      _animationController
-        ..reset()
-        ..forward();
     }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -77,7 +53,7 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
     final password = authState.password;
 
     return SizedBox(
-      height: 200,
+      height: 160, // overall smaller height
       child: cardsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text("Error: $err")),
@@ -89,15 +65,14 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
           return ListView.separated(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
             physics: const BouncingScrollPhysics(),
             itemCount: cards.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 15),
             itemBuilder: (context, index) {
               final card = cards[index];
               final isFocused = index == _focusedIndex;
-
-              return _buildNewsCard(card, isFocused, index, username, password);
+              return _buildNewsCard(card, isFocused, username, password);
             },
           );
         },
@@ -108,59 +83,62 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
   Widget _buildNewsCard(
     Alertmodel card,
     bool isFocused,
-    int index,
     String username,
     String password,
   ) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth * 0.65;
-    const cardHeight = 160.0;
+    final cardWidth = screenWidth * 0.55; // reduced width
+    const cardHeight = 140.0; // reduced height
 
-    return GestureDetector(
-      onTap: () => print('Tapped on news: ${card.title}'),
-      child: InkWell(
-        onTap: () {
-          showDialog(context: context, builder: (context) {
-           return  AlertDialog(
-                   actions: [
-                    Center(child: Text("Soon to be implemmented", style: TextStyle(fontSize: 15 ),)),
-                   ],
-             );
-          },);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          width: cardWidth,
-          height: cardHeight,
-          transform: Matrix4.identity()..scale(isFocused ? 1.05 : 1.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: isFocused
-                ? Border.all(color: Theme.of(context).primaryColor, width: 2)
-                : Border.all(color: Colors.transparent, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: isFocused
-                    ? Theme.of(context).primaryColor.withAlpha(76)
-                    : Colors.black.withAlpha(25),
-                blurRadius: isFocused ? 15 : 8,
-                spreadRadius: isFocused ? 2 : 1,
-                offset: const Offset(0, 4),
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return const AlertDialog(
+              content: Center(
+                child: Text(
+                  "Soon to be implemented",
+                  style: TextStyle(fontSize: 15),
+                ),
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              children: [
-                _buildCardImage(card.imageUrl!, username, password),
-                _buildGradientOverlay(),
-                if (isFocused) _buildFocusOverlay(context),
-                _buildTypeBadge(card.type, isFocused),
-                _buildCardContent(card, isFocused),
-              ],
+            );
+          },
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        width: cardWidth,
+        height: cardHeight,
+        transform: Matrix4.identity()..scale(isFocused ? 1.05 : 1.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: isFocused
+              ? Border.all(color: Theme.of(context).primaryColor, width: 2)
+              : Border.all(color: Colors.transparent, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: isFocused
+                  ? Theme.of(context).primaryColor.withAlpha(76)
+                  : Colors.black.withAlpha(25),
+              blurRadius: isFocused ? 12 : 6,
+              spreadRadius: isFocused ? 1.5 : 0.5,
+              offset: const Offset(0, 3),
             ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            children: [
+              _buildCardImage(card.imageUrl ?? "", username, password),
+              _buildGradientOverlay(),
+              if (isFocused) _buildFocusOverlay(context),
+              _buildTypeBadge(card.type, isFocused),
+              _buildCardContent(card, isFocused),
+            ],
           ),
         ),
       ),
@@ -259,14 +237,14 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
     }
 
     return Positioned(
-      top: 12,
-      right: 12,
+      top: 10,
+      right: 10,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
           color: badgeColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: isFocused ? Border.all(color: Colors.white, width: 1) : null,
           boxShadow: isFocused
               ? [
@@ -301,9 +279,9 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
 
   Widget _buildCardContent(Alertmodel card, bool isFocused) {
     return Positioned(
-      bottom: 12,
-      left: 12,
-      right: 12,
+      bottom: 10,
+      left: 10,
+      right: 10,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -312,7 +290,7 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
             style: TextStyle(
               color: Colors.white,
               fontWeight: isFocused ? FontWeight.w700 : FontWeight.w600,
-              fontSize: isFocused ? 16 : 15,
+              fontSize: isFocused ? 15 : 14,
               height: 1.2,
               shadows: [
                 Shadow(
@@ -334,7 +312,7 @@ class _HorizontalNewscardState extends ConsumerState<HorizontalNewscard>
             style: TextStyle(
               color: Colors.white.withAlpha(230),
               fontWeight: isFocused ? FontWeight.w500 : FontWeight.w400,
-              fontSize: isFocused ? 13 : 12,
+              fontSize: isFocused ? 12 : 11,
               height: 1.3,
               shadows: [
                 Shadow(
